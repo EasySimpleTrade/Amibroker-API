@@ -1,0 +1,166 @@
+/*
+VALLAKKOTTAI MURUGAN THUNAI
+Easy Simple Trading Solutions
+Telegram @easysimpletrade
+Website https://easysimpletrade.blogspot.com
+Youtube https://www.youtube.com/@easysimpletrade
+GitHub https://github.com/EasySimpleTrade
+*/
+
+RequestTimedRefresh(1,False);
+GfxSetOverlayMode(2);
+
+NUMOFDAYS = Param("Number of Days to Backfilll",7,0,750,1);
+PARLDOWN = Param("Number of Parallel Downloads",10,1,50,1);
+RESPPATH = ParamStr("Path to Response Files","R:\\");
+DATAPATH = ParamStr("Path to  Data Files","C:\\API\\");
+USERNUM = Param("User Number",1,1,100,1);
+
+LOGINFILE1 = RESPPATH+"FlattradeLogin"+USERNUM+".txt";
+LIMITSFILE1 = RESPPATH+"FlattradeLimits"+USERNUM+".txt";
+LOGINSCRIPT1 = DATAPATH+"Flattrade Login "+USERNUM+".py";
+LIMITSSCRIPT1 = DATAPATH+"Flattrade Limits "+USERNUM+".py";
+FEEDSCRIPT = DATAPATH+"FlatTrade OneMinuteFeed.py";
+BACKSCRIPT = DATAPATH+"FlatTrade Backfill.py";
+
+
+//Button
+HX = Param("Button Horizontal Position",0,0,164);
+HY = Param("Button Vertical Position",0,0,89);
+
+PX = 10;//round(Status("pxwidth")/164);
+PY = 10;//round(Status("pxheight")/89);
+
+GuiButton( "Login", 1,  PX*2+PX*HX, PY*4+PY*HY, PX*7, PY*3, notifyClicked );
+GuiButton( "Limits", 2,  PX*10+PX*HX, PY*4+PY*HY, PX*7, PY*3, notifyClicked );
+GuiButton( "Start Feed",3,  PX*2+PX*HX, PY*8+PY*HY, PX*7, PY*3, notifyClicked );
+GuiButton( "Backfill",4,  PX*10+PX*HX, PY*8+PY*HY, PX*7, PY*3, notifyClicked );
+
+GuiSetColors( 1, 1, 2, colorBlack, colorLime,colorGreen,-1,colorGreen);
+GuiSetColors( 2, 4, 2, colorBlack, colorYellow, colorGold,-1,colorGold );
+
+
+GUIEVEID = GuiGetEvent( 0, 0 );
+GUIEVENT = GuiGetEvent( 0, 1 );
+
+
+
+
+//Login
+if(GUIEVEID == 1 AND GUIEVENT == 1 )
+{
+fdelete(LOGINFILE1);
+fdelete(LIMITSFILE1);
+StaticVarRemove("FLA*");
+ShellExecute(LOGINSCRIPT1,"","",1);
+StaticVarSet("FLASTATIC"+USERNUM,1);
+}
+
+
+
+fh = fopen(LOGINFILE1, "r" );
+LOGSTATS1 = LOGERROR1 = ACSTOK1 = LOGDATE1 = USERID1 = "";
+if( fh )
+ {
+     while( ! feof( fh ) )
+     {         
+         line = fgets( fh );
+         key = StrExtract( line, 0 );              
+         if ( key == "token" )
+         { 
+         ACSTOK1 = StrTrim(StrExtract(line,1),"",2);   
+         }
+         if ( key == "stat" )
+         { 
+         LOGSTATS1 = StrTrim(StrExtract(line,1),"",2);  
+         }
+         if ( key == "emsg" )
+         { 
+         LOGERROR1 = StrTrim(StrExtract(line,1),"",2);  
+         }if ( key == "date" )
+         { 
+         LOGDATE1 = StrTrim(StrExtract(line,1),"",2);     
+         }
+         if ( key == "user" )
+         { 
+         USERID1 = StrTrim(StrExtract(line,1),"",2);            
+         }
+     }
+     fclose( fh );
+ }
+ 
+ 
+NOWDATE = DateTimeFormat( "%d", Now(5) ); 
+
+
+
+if(StaticVarGet("FLASTATIC"+USERNUM) AND LOGSTATS1 == "Ok" AND LOGDATE1 == NOWDATE  AND ACSTOK1 != "")
+{
+_TRACE("Setting FlatTrade Session "+USERNUM);
+StaticVarSetText("FLAUSERID"+USERNUM,USERID1);
+StaticVarSetText("FLATOKEN"+USERNUM,ACSTOK1);
+ShellExecute(LIMITSSCRIPT1," \""+StaticVarGetText("FLAUSERID"+USERNUM)+"\" \""+StaticVarGetText("FLATOKEN"+USERNUM)+"\" ","",1);
+StaticVarSet("FLASTATIC"+USERNUM,0);
+}
+
+if(GUIEVEID == 2 AND GUIEVENT == 1  AND StaticVarGetText("GWCTOKEN"+USERNUM) != "" )
+{
+ShellExecute(LIMITSSCRIPT1," \""+StaticVarGetText("FLAUSERID"+USERNUM)+"\" \""+StaticVarGetText("FLATOKEN"+USERNUM)+"\" ","",1);
+}
+
+
+fh = fopen( LIMITSFILE1, "r" );
+
+LIMSTATS1 = LIMCASH1 = LIMERROR1 = "";
+if( fh )
+ {
+     while( ! feof( fh ) )
+     {         
+         line = fgets( fh );
+         key = StrExtract( line, 0 );               
+         if ( key == "stat" )
+         { 
+         LIMSTATS1 = StrTrim(StrExtract(line,1),"",2);    
+         }
+         if ( key == "emsg" )
+         { 
+         LIMERROR1 = StrTrim(StrExtract(line,1),"",2);
+            
+         }if ( key == "cash" )
+         { 
+         LIMCASH1 = StrTrim(StrExtract(line,1),"",2);     
+         }
+     }
+     fclose( fh );
+ } 
+ 
+ //DataFeed
+if(GUIEVEID == 3 AND GUIEVENT == 1 )
+{
+ShellExecute(FEEDSCRIPT,"","",1);
+}
+
+ //Backfill
+ NUMOFDAYS = ""+NUMOFDAYS;
+ PARLDOWN = ""+PARLDOWN;
+if(GUIEVEID == 4 AND GUIEVENT == 1 )
+{
+ShellExecute(BACKSCRIPT," \""+NUMOFDAYS+"\" \""+PARLDOWN+"\" ","",1);
+}
+ 
+ //GFX  
+GfxSetBkMode(1);
+GfxSelectFont("Verdhana", 14, 700, False ); 
+GfxSetTextColor(colorBrightGreen);
+GfxTextOut("Flattrade",PX*2,PY*1.5);
+ 
+
+StatusLogin1 = WriteIf(LOGDATE1 != NOWDATE, "Please Login",  WriteIf(LOGERROR1 != "", LOGERROR1, WriteIf(LOGSTATS1 != "Ok", "Login Error", "Login Succesfull")));
+
+ColorLogin1 = IIf(StatusLogin1 == "Login Succesfull",colorBrightGreen,colorRed);
+GfxSetTextColor(ColorLogin1);
+
+StatusLimit1 = WriteIf(LIMSTATS1 != "Ok",LIMERROR1, WriteIf(LIMSTATS1 == "Ok" AND LOGDATE1 == NOWDATE,"Cash "+ LIMCASH1,"Get Limits"));
+
+GfxTextOut(USERID1+" "+StatusLogin1+"          "+StatusLimit1,PX*30+PX*HX,PY*4.5+PY*HY);
+ 
