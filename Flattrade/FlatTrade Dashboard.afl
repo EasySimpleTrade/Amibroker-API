@@ -103,7 +103,7 @@ ShellExecute(LIMITSSCRIPT1," \""+StaticVarGetText("FLAUSERID"+USERNUM)+"\" \""+S
 StaticVarSet("FLASTATIC"+USERNUM,0);
 }
 
-if(GUIEVEID == 2 AND GUIEVENT == 1  AND StaticVarGetText("GWCTOKEN"+USERNUM) != "" )
+if(GUIEVEID == 2 AND GUIEVENT == 1  AND StaticVarGetText("FLATOKEN"+USERNUM) != "" )
 {
 ShellExecute(LIMITSSCRIPT1," \""+StaticVarGetText("FLAUSERID"+USERNUM)+"\" \""+StaticVarGetText("FLATOKEN"+USERNUM)+"\" ","",1);
 }
