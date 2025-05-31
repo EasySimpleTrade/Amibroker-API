@@ -1,0 +1,161 @@
+/*
+VALLAKKOTTAI MURUGAN THUNAI
+Easy Simple Trading Solutions
+Telegram @easysimpletrade
+Website https://easysimpletrade.blogspot.com
+Youtube https://www.youtube.com/@easysimpletrade
+GitHub https://github.com/EasySimpleTrade
+*/
+
+RequestTimedRefresh(1,False);
+GfxSetOverlayMode(2);
+
+RESPPATH = ParamStr("Path to Response Files","R:\\");
+DATAPATH = ParamStr("Path to  Data Files","C:\\API\\");
+
+ //Nifty Options
+iEXPDATEN5 = ParamDate("Nifty Exp Date","29-05-2025",2);
+EXPDATEN5 = DateTimeFormat("%d",iEXPDATEN5)+"-"+StrToUpper( DateTimeFormat("%b",iEXPDATEN5))+"-"+DateTimeFormat("%Y",iEXPDATEN5);
+STRIKEMINN5 = Param("Nifty from Strike",21000,1,100000);
+STRIKEMAXN5 = Param("Nifty to Strike",27000,1,100000);
+
+ //Bank Nifty Options
+iEXPDATEME = ParamDate("Monthly Exp Date","26-06-2025",2);
+EXPDATEME = DateTimeFormat("%d",iEXPDATEME)+"-"+StrToUpper( DateTimeFormat("%b",iEXPDATEME))+"-"+DateTimeFormat("%Y",iEXPDATEME);
+STRIKEMINBN = Param("BankNifty from Strike",40000,1,100000);
+STRIKEMAXBN = Param("BankNifty to Strike",60000,1,100000);
+
+
+ //Sensex Options
+iEXPDATESX = ParamDate("Sensex Wk Exp Date","03-06-2025",2);
+EXPDATESX = DateTimeFormat("%d",iEXPDATESX)+"-"+StrToUpper( DateTimeFormat("%b",iEXPDATESX))+"-"+DateTimeFormat("%Y",iEXPDATESX);
+STRIKEMINSX = Param("Sensex from Strike",70000,1,100000);
+STRIKEMAXSX = Param("Sensex to Strike",90000,1,100000);
+
+//Single FNO
+FNONAME = Paramstr("Single FNO Name","SILVERMIC");
+iEXPDATESI = ParamDate("Single FNO Exp Date","30-06-2025",2);
+EXPDATESI = DateTimeFormat("%d",iEXPDATESI)+"-"+StrToUpper( DateTimeFormat("%b",iEXPDATESI))+"-"+DateTimeFormat("%Y",iEXPDATESI);
+STRIKEMINSI = Param("Single FNO from Strike",0,200000);
+STRIKEMAXSI = Param("Single FNO to Strike",100000,1,200000);
+LINKFILELIST = ParamList("Single FNO Exch_Seg","Nfo_Equity_Derivatives|Nfo_Index_Derivatives|Bfo_Equity_Derivatives|Bfo_Index_Derivatives|Commodity|Currency_Derivatives",4);
+
+SFNOSUF = Paramstr("Single FNO Futures Suffix", "-I");
+
+ENFUTSI = ParamList("Single FnO Need Futures", "Yes|No",0);
+ENOPTSI = ParamList("Single FnO Need Options", "Yes|No",1);
+
+
+
+EQSCRIPT = DATAPATH+"Equity Master.py";
+FUSCRIPT = DATAPATH+"Futures Master.py";
+FNOSCRIPT = DATAPATH+"FNO Master.py";
+
+OPTLISTSCRIPT = DATAPATH+"Options List Master.py";
+OPTSINGSCRIPT = DATAPATH+"Options Single Master.py";
+JOINSCRIPT = DATAPATH+"Join Masters.py";
+HISTSCRIPT = DATAPATH+"FlatTrade HistData.py";
+
+
+
+//Button
+HX = Param("Button Horizontal Position",0,0,164);
+HY = Param("Button Vertical Position",0,0,89);
+
+PX = 10;//round(Status("pxwidth")/164);
+PY = 10;//round(Status("pxheight")/89);
+
+GuiButton( "NSE Equity", 1,  PX*2+PX*HX, PY*4+PY*HY, PX*7, PY*3, notifyClicked );
+GuiButton( "Stock Fut", 2,  PX*10+PX*HX, PY*4+PY*HY, PX*7, PY*3, notifyClicked );
+GuiButton( "Index Fut", 3,  PX*18+PX*HX, PY*4+PY*HY, PX*7, PY*3, notifyClicked );
+
+GuiButton( "N50 Options", 4,  PX*26+PX*HX, PY*4+PY*HY, PX*7, PY*3, notifyClicked );
+GuiButton( "BNF Options", 5,  PX*34+PX*HX, PY*4+PY*HY, PX*7, PY*3, notifyClicked );
+GuiButton( "SEN Options", 6,  PX*42+PX*HX, PY*4+PY*HY, PX*7, PY*3, notifyClicked );
+GuiButton( "Single FNO", 7,  PX*50+PX*HX, PY*4+PY*HY, PX*7, PY*3, notifyClicked );
+
+GuiButton( "Stock Opt", 8,  PX*58+PX*HX, PY*4+PY*HY, PX*7, PY*3, notifyClicked );
+GuiButton( "Join Files",21,  PX*2+PX*HX, PY*8+PY*HY, PX*7, PY*3, notifyClicked );
+GuiButton( "HistData",22,  PX*10+PX*HX, PY*8+PY*HY, PX*7, PY*3, notifyClicked );
+
+GuiSetColors( 22, 22, 2, colorBlack, colorLime,colorGreen,-1,colorGreen);
+GuiSetColors( 1, 21, 2, colorBlack, colorYellow, colorGold,-1,colorGold );
+
+
+GUIEVEID = GuiGetEvent( 0, 0 );
+GUIEVENT = GuiGetEvent( 0, 1 );
+
+ //NSE Equity
+if(GUIEVEID == 1 AND GUIEVENT == 1 )
+{
+ShellExecute(EQSCRIPT,"NSE","",1);
+}
+
+ //NSE Equity Futures
+if(GUIEVEID == 2 AND GUIEVENT == 1 )
+{
+ShellExecute(FUSCRIPT," \"NSEEquityFutures\" \"Nfo_Equity_Derivatives\" \""+EXPDATEME+"\"  ","",1);
+}
+
+ //NSE Index Futures
+if(GUIEVEID == 3 AND GUIEVENT == 1 )
+{
+ShellExecute(FUSCRIPT," \"NSEIndexFutures\" \"Nfo_Index_Derivatives\" \""+EXPDATEME+"\"  ","",1);
+}
+
+
+//NIFTY Options
+if(GUIEVEID == 4 AND GUIEVENT == 1 )
+{
+ShellExecute(OPTSINGSCRIPT," \"NIFTY\" \""+EXPDATEN5+"\" \""+STRIKEMINN5+"\" \""+STRIKEMAXN5+"\" ","",1);
+}
+
+//Banknifty Options
+if(GUIEVEID == 5 AND GUIEVENT == 1 )
+{
+ShellExecute(OPTSINGSCRIPT," \"BANKNIFTY\" \""+EXPDATEME+"\" \""+STRIKEMINBN+"\" \""+STRIKEMAXBN+"\" ","",1);
+}
+
+//Sensex F&O Options
+if(GUIEVEID == 6 AND GUIEVENT == 1 )
+{
+ShellExecute(FNOSCRIPT," \"SENSEX\" \""+EXPDATESX+"\" \""+STRIKEMINSX+"\" \""+STRIKEMAXSX+"\" \"Bfo_Index_Derivatives\" \""+SFNOSUF+"\" \"Yes\" \"Yes\" ","",1);
+}
+
+//Single FnO Options
+if(GUIEVEID == 7 AND GUIEVENT == 1 )
+{
+ShellExecute(FNOSCRIPT," \""+FNONAME+"\" \""+EXPDATESI+"\" \""+STRIKEMINSI+"\" \""+STRIKEMAXSI+"\" \""+LINKFILELIST+"\" \""+SFNOSUF+"\" \""+ENFUTSI+"\" \""+ENOPTSI+"\" ","",1);
+}
+
+ //Stock Options
+if(GUIEVEID == 8 AND GUIEVENT == 1 )
+{
+ShellExecute(OPTLISTSCRIPT,"","",1);
+}
+
+ //Join Files
+if(GUIEVEID == 21 AND GUIEVENT == 1 )
+{
+ShellExecute(JOINSCRIPT,"","",1);
+}
+
+//Historical Data
+FILETODOWN =  Paramstr("Historical download Master","ScripMaster");
+iEXPDATEHDF = ParamDate("Historical Back fill from",Now(1),2);
+EXPDATEHDF = DateTimeFormat("%d",iEXPDATEHDF)+"-"+StrToUpper( DateTimeFormat("%m",iEXPDATEHDF))+"-"+DateTimeFormat("%Y",iEXPDATEHDF);
+iEXPDATEHDT = ParamDate("Historical Back fill To",Now(1),2);
+EXPDATEHDT = DateTimeFormat("%d",iEXPDATEHDT)+"-"+StrToUpper( DateTimeFormat("%m",iEXPDATEHDT))+"-"+DateTimeFormat("%Y",iEXPDATEHDT);
+ENIMPORTDATA = ParamList("Import Downloaded Data","Yes|No");
+ENDELETEDATA = ParamList("Delete Delete Data","Yes|No");
+
+ //HistData
+if(GUIEVEID == 22 AND GUIEVENT == 1 )
+{
+ShellExecute(HISTSCRIPT," \""+EXPDATEHDF+"\" \""+EXPDATEHDT+"\" \""+ENIMPORTDATA+"\" \""+ENDELETEDATA+"\" \""+FILETODOWN+"\" ","",1);
+}
+
+GfxSetBkMode(1);
+GfxSelectFont("Verdhana", 14, 700, False ); 
+GfxSetTextColor(colorBrightGreen);
+GfxTextOut("FlatTrade Master ",PX*2,PY*1.5);
