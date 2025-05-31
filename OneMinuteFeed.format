@@ -4,6 +4,5 @@ $FORMAT Ticker, Date_DMY, Time, Open, High, Low, Close, Volume, OpenInt
 $SKIPLINES 1
 $SEPARATOR ,
 $CONT 1
-$GROUP 0
 $DEBUG 1
-
+$AUTOADD 1
