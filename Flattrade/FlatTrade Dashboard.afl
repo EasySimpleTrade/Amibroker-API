@@ -35,9 +35,10 @@ GuiButton( "Login", 1,  PX*2+PX*HX, PY*4+PY*HY, PX*7, PY*3, notifyClicked );
 GuiButton( "Limits", 2,  PX*10+PX*HX, PY*4+PY*HY, PX*7, PY*3, notifyClicked );
 GuiButton( "Start Feed",3,  PX*2+PX*HX, PY*8+PY*HY, PX*7, PY*3, notifyClicked );
 GuiButton( "Backfill",4,  PX*10+PX*HX, PY*8+PY*HY, PX*7, PY*3, notifyClicked );
+GuiButton( "HistData",5,  PX*2+PX*HX, PY*12+PY*HY, PX*7, PY*3, notifyClicked );
 
 GuiSetColors( 1, 1, 2, colorBlack, colorLime,colorGreen,-1,colorGreen);
-GuiSetColors( 2, 4, 2, colorBlack, colorYellow, colorGold,-1,colorGold );
+GuiSetColors( 2, 5, 2, colorBlack, colorYellow, colorGold,-1,colorGold );
 
 
 GUIEVEID = GuiGetEvent( 0, 0 );
@@ -103,7 +104,7 @@ ShellExecute(LIMITSSCRIPT1," \""+StaticVarGetText("FLAUSERID"+USERNUM)+"\" \""+S
 StaticVarSet("FLASTATIC"+USERNUM,0);
 }
 
-if(GUIEVEID == 2 AND GUIEVENT == 1  AND StaticVarGetText("FLATOKEN"+USERNUM) != "" )
+if(GUIEVEID == 2 AND GUIEVENT == 1  AND StaticVarGetText("GWCTOKEN"+USERNUM) != "" )
 {
 ShellExecute(LIMITSSCRIPT1," \""+StaticVarGetText("FLAUSERID"+USERNUM)+"\" \""+StaticVarGetText("FLATOKEN"+USERNUM)+"\" ","",1);
 }
@@ -164,3 +165,17 @@ StatusLimit1 = WriteIf(LIMSTATS1 != "Ok",LIMERROR1, WriteIf(LIMSTATS1 == "Ok" AN
 
 GfxTextOut(USERID1+" "+StatusLogin1+"          "+StatusLimit1,PX*30+PX*HX,PY*4.5+PY*HY);
  
+//Historical Data
+FILETODOWN =  Paramstr("Historical download Master","ScripMaster");
+iEXPDATEHDF = ParamDate("Historical Back fill from",Now(1),2);
+EXPDATEHDF = DateTimeFormat("%d",iEXPDATEHDF)+"-"+StrToUpper( DateTimeFormat("%m",iEXPDATEHDF))+"-"+DateTimeFormat("%Y",iEXPDATEHDF);
+iEXPDATEHDT = ParamDate("Historical Back fill To",Now(1),2);
+EXPDATEHDT = DateTimeFormat("%d",iEXPDATEHDT)+"-"+StrToUpper( DateTimeFormat("%m",iEXPDATEHDT))+"-"+DateTimeFormat("%Y",iEXPDATEHDT);
+ENIMPORTDATA = ParamList("Import Downloaded Data","Yes|No");
+ENDELETEDATA = ParamList("Delete Delete Data","Yes|No");
+
+ //HistData
+if(GUIEVEID == 22 AND GUIEVENT == 1 )
+{
+ShellExecute(HISTSCRIPT," \""+EXPDATEHDF+"\" \""+EXPDATEHDT+"\" \""+ENIMPORTDATA+"\" \""+ENDELETEDATA+"\" \""+FILETODOWN+"\" ","",1);
+}
