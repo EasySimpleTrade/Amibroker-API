@@ -54,7 +54,7 @@ FNOSCRIPT = DATAPATH+"FNO Master.py";
 OPTLISTSCRIPT = DATAPATH+"Options List Master.py";
 OPTSINGSCRIPT = DATAPATH+"Options Single Master.py";
 JOINSCRIPT = DATAPATH+"Join Masters.py";
-HISTSCRIPT = DATAPATH+"FlatTrade HistData.py";
+
 
 
 
