@@ -22,7 +22,7 @@ LOGINSCRIPT1 = DATAPATH+"Flattrade Login "+USERNUM+".py";
 LIMITSSCRIPT1 = DATAPATH+"Flattrade Limits "+USERNUM+".py";
 FEEDSCRIPT = DATAPATH+"FlatTrade OneMinuteFeed.py";
 BACKSCRIPT = DATAPATH+"FlatTrade Backfill.py";
-
+HISTSCRIPT = DATAPATH+"FlatTrade HistData.py";
 
 //Button
 HX = Param("Button Horizontal Position",0,0,164);
