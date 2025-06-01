@@ -1,0 +1,54 @@
+/*
+VALLAKKOTTAI MURUGAN THUNAI
+Easy Simple Trading Solutions
+Telegram @easysimpletrade
+Website https://easysimpletrade.blogspot.com
+Youtube https://www.youtube.com/@easysimpletrade
+*/
+
+OPDIR = ParamStr("Output Drive", "C");
+OPFOL = ParamStr("Output Folder Name", "API");
+
+
+NSTRK = 12;
+STRDIF = GetFnData("PointValue");
+ATM = round(C/STRDIF)*STRDIF;
+
+STRKMIN = ATM - NSTRK*STRDIF;
+STRKMAX = ATM + NSTRK*STRDIF;
+
+if(Status( "action" ) == actionExplore)
+
+{
+if (  Status( "stocknum" ) == 0 )
+{
+fdelete(OPDIR+":\\"+ OPFOL+"\\OptionsList.csv");
+//fdelete("C:\\Users\\Administrator\\OptionsList.csv");
+//fh = fopen("C:\\Users\\Administrator\\OptionsList.csv", "w");
+//fputs( "Symbol,StrikeMin,StrikeMax\n", fh );
+//fclose( fh );
+}
+}
+
+
+if(Status( "action" ) == actionScan)
+
+{
+//fmkdir( OPDIR+":\\"+ OPFOL);
+fh = fopen( OPDIR+":\\"+ OPFOL+"\\OptionsList.csv", "a");
+//fputs( "Symbol,StrikeMin,StrikeMax\n", fh );
+//fh = fopen( "C:\\Users\\Administrator\\OptionsList.csv", "a");
+if( fh )
+{
+fputs( Name() +","+STRKMIN+","+STRKMAX+ "\n", fh );
+fclose( fh );
+}
+}
+
+Filter = 1;
+Addcolumn(RoundLotSize,"LotSize",1);
+AddColumn(MarginDeposit,"Margin",1);
+AddColumn(STRDIF,"Str Diff",1.1);
+AddColumn(STRKMIN,"Str MIN",1.1);
+AddColumn(STRKMAX,"Str MIN",1.1);
+AddColumn(ATM,"ATM",1.1);
