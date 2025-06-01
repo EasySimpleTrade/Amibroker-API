@@ -175,7 +175,7 @@ ENIMPORTDATA = ParamList("Import Downloaded Data","Yes|No");
 ENDELETEDATA = ParamList("Delete Delete Data","Yes|No");
 
  //HistData
-if(GUIEVEID == 22 AND GUIEVENT == 1 )
+if(GUIEVEID == 5 AND GUIEVENT == 1 )
 {
 ShellExecute(HISTSCRIPT," \""+EXPDATEHDF+"\" \""+EXPDATEHDT+"\" \""+ENIMPORTDATA+"\" \""+ENDELETEDATA+"\" \""+FILETODOWN+"\" ","",1);
 }
