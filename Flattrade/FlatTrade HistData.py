@@ -108,7 +108,7 @@ async def hist_data_single(session, base_url, end_point, user_id, jkey, symbol, 
                     if do_import == 'Yes':
                         
                         AB = win32com.client.Dispatch("Broker.Application")
-                        AB.Import(0, output_file, "EST.Format")
+                        AB.Import(0, output_file, "OneMinuteFeed.format")
                         # AB.RefreshAll()
 
                         if do_delete == 'Yes':
