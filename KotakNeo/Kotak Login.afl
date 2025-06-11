@@ -1,0 +1,146 @@
+/*
+VALLAKKOTTAI MURUGAN THUNAI
+Easy Simple Trading Solutions
+Telegram @easysimpletradeupdates
+Website https://easysimpletrade.blogspot.com
+Youtube https://www.youtube.com/@easysimpletrade
+GitHub https://github.com/EasySimpleTrade
+*/
+
+RequestTimedRefresh(1,False);
+GfxSetOverlayMode(2);
+
+RESPPATH = ParamStr("Path to Response Files","R:\\");
+DATAPATH = ParamStr("Path to  Data Files","C:\\API\\");
+USERNUM = Param("User Number",1,1,100,1);
+
+
+LOGINFILE1 = RESPPATH+"KotakLogin"+USERNUM+".txt";
+LIMITSFILE1 = RESPPATH+"KotakLimits"+USERNUM+".txt";
+LOGINSCRIPT1 = DATAPATH+"Kotak Login "+USERNUM+".py";
+LIMITSSCRIPT1 = DATAPATH+"Kotak Limits "+USERNUM+".py";
+
+//Button
+HX = Param("Button Horizontal Position",0,0,164);
+HY = Param("Button Vertical Position",0,0,89);
+
+PX = 10;//round(Status("pxwidth")/164);
+PY = 10;//round(Status("pxheight")/89);
+
+GuiButton( "Login", 1,  PX*2+PX*HX, PY*4+PY*HY, PX*7, PY*3, notifyClicked );
+GuiButton( "Limits", 2,  PX*10+PX*HX, PY*4+PY*HY, PX*7, PY*3, notifyClicked );
+GuiSetColors( 1, 1, 2, colorBlack, colorLime,colorGreen,-1,colorGreen);
+GuiSetColors( 2, 2, 2, colorBlack, colorYellow, colorGold,-1,colorGold );
+
+
+GUIEVEID = GuiGetEvent( 0, 0 );
+GUIEVENT = GuiGetEvent( 0, 1 );
+
+//Login
+if(GUIEVEID == 1 AND GUIEVENT == 1 )
+{
+fdelete(LOGINFILE1);
+fdelete(LIMITSFILE1);
+StaticVarRemove("NEO*");
+ShellExecute(LOGINSCRIPT1,"","",1);
+StaticVarSet("NEOSTATIC"+USERNUM,1);
+}
+
+
+fh = fopen( LOGINFILE1, "r" );
+ACSTOK1 = SESTOK1 = SESID1 = SERVERID1 = LOGDATE1 = USERID1 = "";
+if( fh )
+ {
+     while( ! feof( fh ) )
+     {         
+         line = fgets( fh );
+         key = StrExtract( line, 0 );         
+         if ( key == "access" )
+         { 
+         ACSTOK1 = StrTrim(StrExtract(line,1),"",2);   
+         }        
+         if ( key == "session" )
+         { 
+         SESTOK1 = StrTrim(StrExtract(line,1),"",2); 
+         }
+         if ( key == "sid" )
+         { 
+         SESID1 = StrTrim(StrExtract(line,1),"",2);    
+         }
+         if ( key == "hsServerId" )
+         { 
+         SERVERID1 = StrTrim(StrExtract(line,1),"",2);    
+         }
+         if ( key == "date" )
+         { 
+         LOGDATE1 = StrTrim(StrExtract(line,1),"",2);           
+         }
+         if ( key == "user" )
+         { 
+         USERID1 = StrTrim(StrExtract(line,1),"",2);            
+         }
+     }
+     fclose( fh );
+ }
+ 
+NOWDATE = DateTimeFormat( "%d", Now(5) ); 
+
+
+
+if(StaticVarGet("NEOSTATIC"+USERNUM) AND LOGDATE1 == NOWDATE AND StaticVarGetText("NEOACSTOK"+USERNUM) == "" AND ACSTOK1 != "")
+{
+_TRACE("Setting Kotak Session "+USERNUM);
+StaticVarSetText("NEOACSTOK"+USERNUM,ACSTOK1);
+StaticVarSetText("NEOSESTOK"+USERNUM,SESTOK1);
+StaticVarSetText("NEOSESID"+USERNUM,SESID1);
+StaticVarSetText("NEOSERVERID"+USERNUM,SERVERID1);
+ShellExecute(LIMITSSCRIPT1," \""+StaticVarGetText("NEOACSTOK"+USERNUM)+"\" \""+StaticVarGetText("NEOSESTOK"+USERNUM)+"\" \""+StaticVarGetText("NEOSESID"+USERNUM)+"\" \""+StaticVarGetText("NEOSERVERID"+USERNUM)+"\" ","",1);
+StaticVarSet("NEOSTATIC"+USERNUM,0);
+}
+
+if(GUIEVEID == 2 AND GUIEVENT == 1  AND StaticVarGetText("GWCTOKEN"+USERNUM) != "")
+{
+ShellExecute(LIMITSSCRIPT1," \""+StaticVarGetText("NEOACSTOK"+USERNUM)+"\" \""+StaticVarGetText("NEOSESTOK"+USERNUM)+"\" \""+StaticVarGetText("NEOSESID"+USERNUM)+"\" \""+StaticVarGetText("NEOSERVERID"+USERNUM)+"\" ","",1);
+}
+
+fh = fopen( LIMITSFILE1, "r" );
+
+LIMSTATS1 = LIMCASH1 = "";
+if( fh )
+ {
+     while( ! feof( fh ) )
+     {         
+         line = fgets( fh );
+         key = StrExtract( line, 0 );               
+         if ( key == "stat" )
+         { 
+         LIMSTATS1 = StrTrim(StrExtract(line,1),"",2);    
+         }
+        if ( key == "Net" )
+         { 
+         LIMCASH1 = StrTrim(StrExtract(line,1),"",2);     
+         }
+     }
+     fclose( fh );
+ } 
+
+//GFX
+GfxSetBkMode(1);
+GfxSelectFont("Verdhana", 14, 700, False ); 
+GfxSetTextColor(colorBrightGreen);
+GfxTextOut("Kotak",PX*2,PY*1.5);
+
+StatusLogin1= WriteIf(LOGDATE1 != NOWDATE, "Please Login", WriteIf(StaticVarGetText("NEOACSTOK"+USERNUM) == "", "Session Not Set", "Login Succesfull"));
+
+ColorLogin1 = IIf(StatusLogin1 == "Login Succesfull",colorBrightGreen,colorRed);
+GfxSetTextColor(ColorLogin1);
+
+StatusLimit1 = WriteIf(LIMCASH1 != "" AND LIMSTATS1 == "Ok" AND LOGDATE1 == NOWDATE,"Cash "+ LIMCASH1,"Get Limits");
+
+GfxTextOut(USERID1+" "+StatusLogin1+"          "+StatusLimit1,PX*30+PX*HX,PY*4.5+PY*HY);
+
+/*
+GfxTextOut(StaticVarGetText("NEOACSTOK"+USERNUM),PX*30+PX*HX,PY*8.5+PY*HY);
+GfxTextOut(StaticVarGetText("NEOSESTOK"+USERNUM),PX*30+PX*HX,PY*12.5+PY*HY);
+GfxTextOut(StaticVarGetText("NEOSESID"+USERNUM),PX*30+PX*HX,PY*16.5+PY*HY);
+GfxTextOut(StaticVarGetText("NEOERVERID"+USERNUM),PX*30+PX*HX,PY*20.5+PY*HY);
