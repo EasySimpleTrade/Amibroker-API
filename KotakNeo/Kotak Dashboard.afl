@@ -10,15 +10,39 @@ GitHub https://github.com/EasySimpleTrade
 RequestTimedRefresh(1,False);
 GfxSetOverlayMode(2);
 
+_SECTION_BEGIN("Flattrade Backfill");
+//Backfill
+NUMDAYBF= Param("Number of Days to Backfilll",7,0,750,1);
+PARABF = Param("Number of Parallel Backfill",10,1,50,1);
+
+
+_SECTION_BEGIN("Flattrade Historical Data");
+//Historical Data
+FILETODOWN =  Paramstr("Historical Data download Master","ScripMaster");
+iEXPDATEHDF = ParamDate("Historical Data from",Now(1),2);
+EXPDATEHDF = DateTimeFormat("%d",iEXPDATEHDF)+"-"+StrToUpper( DateTimeFormat("%m",iEXPDATEHDF))+"-"+DateTimeFormat("%Y",iEXPDATEHDF);
+iEXPDATEHDT = ParamDate("Historical DataTo",Now(1),2);
+EXPDATEHDT = DateTimeFormat("%d",iEXPDATEHDT)+"-"+StrToUpper( DateTimeFormat("%m",iEXPDATEHDT))+"-"+DateTimeFormat("%Y",iEXPDATEHDT);
+ENIMPORTDATA = ParamList("Import Downloaded Data","Yes|No");
+ENDELETEDATA = ParamList("Delete Downladed Data","Yes|No");
+TIMEFRAMEHD= ParamList("Historical Data TimeFrame ","1|3|5|10|15|30|60|120");
+PARAHD = Param("Number of Parallel Historical",10,1,50,1);
+
+
+_SECTION_BEGIN("Flattrade Dashboard");
 RESPPATH = ParamStr("Path to Response Files","R:\\");
 DATAPATH = ParamStr("Path to  Data Files","C:\\API\\");
 USERNUM = Param("User Number",1,1,100,1);
 
+LOGINFILE1 = RESPPATH+"FlattradeLogin"+USERNUM+".txt";
+LIMITSFILE1 = RESPPATH+"FlattradeLimits"+USERNUM+".txt";
+LOGINSCRIPT1 = DATAPATH+"Flattrade Login "+USERNUM+".py";
+LIMITSSCRIPT1 = DATAPATH+"Flattrade Limits "+USERNUM+".py";
+FEEDSCRIPT = DATAPATH+"FlatTrade OneMinuteFeed.py";
+BACKSCRIPT = DATAPATH+"FlatTrade Backfill.py";
+HISTSCRIPT = DATAPATH+"FlatTrade HistData.py";
 
-LOGINFILE1 = RESPPATH+"KotakLogin"+USERNUM+".txt";
-LIMITSFILE1 = RESPPATH+"KotakLimits"+USERNUM+".txt";
-LOGINSCRIPT1 = DATAPATH+"Kotak Login "+USERNUM+".py";
-LIMITSSCRIPT1 = DATAPATH+"Kotak Limits "+USERNUM+".py";
+
 
 //Button
 HX = Param("Button Horizontal Position",0,0,164);
@@ -29,51 +53,53 @@ PY = 10;//round(Status("pxheight")/89);
 
 GuiButton( "Login", 1,  PX*2+PX*HX, PY*4+PY*HY, PX*7, PY*3, notifyClicked );
 GuiButton( "Limits", 2,  PX*10+PX*HX, PY*4+PY*HY, PX*7, PY*3, notifyClicked );
+GuiButton( "Start Feed",3,  PX*2+PX*HX, PY*8+PY*HY, PX*7, PY*3, notifyClicked );
+GuiButton( "Backfill",4,  PX*10+PX*HX, PY*8+PY*HY, PX*7, PY*3, notifyClicked );
+GuiButton( "HistData",5,  PX*2+PX*HX, PY*12+PY*HY, PX*7, PY*3, notifyClicked );
+
 GuiSetColors( 1, 1, 2, colorBlack, colorLime,colorGreen,-1,colorGreen);
-GuiSetColors( 2, 2, 2, colorBlack, colorYellow, colorGold,-1,colorGold );
+GuiSetColors( 2, 5, 2, colorBlack, colorYellow, colorGold,-1,colorGold );
 
 
 GUIEVEID = GuiGetEvent( 0, 0 );
 GUIEVENT = GuiGetEvent( 0, 1 );
+
+
+
 
 //Login
 if(GUIEVEID == 1 AND GUIEVENT == 1 )
 {
 fdelete(LOGINFILE1);
 fdelete(LIMITSFILE1);
-StaticVarRemove("NEO*");
+StaticVarRemove("FLA*");
 ShellExecute(LOGINSCRIPT1,"","",1);
-StaticVarSet("NEOSTATIC"+USERNUM,1);
 }
 
 
-fh = fopen( LOGINFILE1, "r" );
-ACSTOK1 = SESTOK1 = SESID1 = SERVERID1 = LOGDATE1 = USERID1 = "";
+
+fh = fopen(LOGINFILE1, "r" );
+LOGSTATS1 = LOGERROR1 = ACSTOK1 = LOGDATE1 = USERID1 = "";
 if( fh )
  {
      while( ! feof( fh ) )
      {         
          line = fgets( fh );
-         key = StrExtract( line, 0 );         
-         if ( key == "access" )
+         key = StrExtract( line, 0 );              
+         if ( key == "token" )
          { 
          ACSTOK1 = StrTrim(StrExtract(line,1),"",2);   
-         }        
-         if ( key == "session" )
-         { 
-         SESTOK1 = StrTrim(StrExtract(line,1),"",2); 
          }
-         if ( key == "sid" )
+         if ( key == "stat" )
          { 
-         SESID1 = StrTrim(StrExtract(line,1),"",2);    
+         LOGSTATS1 = StrTrim(StrExtract(line,1),"",2);  
          }
-         if ( key == "hsServerId" )
+         if ( key == "emsg" )
          { 
-         SERVERID1 = StrTrim(StrExtract(line,1),"",2);    
-         }
-         if ( key == "date" )
+         LOGERROR1 = StrTrim(StrExtract(line,1),"",2);  
+         }if ( key == "date" )
          { 
-         LOGDATE1 = StrTrim(StrExtract(line,1),"",2);           
+         LOGDATE1 = StrTrim(StrExtract(line,1),"",2);     
          }
          if ( key == "user" )
          { 
@@ -83,29 +109,28 @@ if( fh )
      fclose( fh );
  }
  
+ 
 NOWDATE = DateTimeFormat( "%d", Now(5) ); 
 
 
 
-if(StaticVarGet("NEOSTATIC"+USERNUM) AND LOGDATE1 == NOWDATE AND StaticVarGetText("NEOACSTOK"+USERNUM) == "" AND ACSTOK1 != "")
+if(StaticVarGetText("FLATOKEN"+USERNUM) == "" AND LOGSTATS1 == "Ok" AND LOGDATE1 == NOWDATE  AND ACSTOK1 != "")
 {
-_TRACE("Setting Kotak Session "+USERNUM);
-StaticVarSetText("NEOACSTOK"+USERNUM,ACSTOK1);
-StaticVarSetText("NEOSESTOK"+USERNUM,SESTOK1);
-StaticVarSetText("NEOSESID"+USERNUM,SESID1);
-StaticVarSetText("NEOSERVERID"+USERNUM,SERVERID1);
-ShellExecute(LIMITSSCRIPT1," \""+StaticVarGetText("NEOACSTOK"+USERNUM)+"\" \""+StaticVarGetText("NEOSESTOK"+USERNUM)+"\" \""+StaticVarGetText("NEOSESID"+USERNUM)+"\" \""+StaticVarGetText("NEOSERVERID"+USERNUM)+"\" ","",1);
-StaticVarSet("NEOSTATIC"+USERNUM,0);
+_TRACE("Setting FlatTrade Session "+USERNUM);
+StaticVarSetText("FLAUSERID"+USERNUM,USERID1);
+StaticVarSetText("FLATOKEN"+USERNUM,ACSTOK1);
+ShellExecute(LIMITSSCRIPT1," \""+StaticVarGetText("FLAUSERID"+USERNUM)+"\" \""+StaticVarGetText("FLATOKEN"+USERNUM)+"\" ","",1);
 }
 
-if(GUIEVEID == 2 AND GUIEVENT == 1  AND StaticVarGetText("GWCTOKEN"+USERNUM) != "")
+if(GUIEVEID == 2 AND GUIEVENT == 1  AND StaticVarGetText("FLATOKEN"+USERNUM) != "" )
 {
-ShellExecute(LIMITSSCRIPT1," \""+StaticVarGetText("NEOACSTOK"+USERNUM)+"\" \""+StaticVarGetText("NEOSESTOK"+USERNUM)+"\" \""+StaticVarGetText("NEOSESID"+USERNUM)+"\" \""+StaticVarGetText("NEOSERVERID"+USERNUM)+"\" ","",1);
+ShellExecute(LIMITSSCRIPT1," \""+StaticVarGetText("FLAUSERID"+USERNUM)+"\" \""+StaticVarGetText("FLATOKEN"+USERNUM)+"\" ","",1);
 }
+
 
 fh = fopen( LIMITSFILE1, "r" );
 
-LIMSTATS1 = LIMCASH1 = "";
+LIMSTATS1 = LIMCASH1 = LIMERROR1 = "";
 if( fh )
  {
      while( ! feof( fh ) )
@@ -116,31 +141,52 @@ if( fh )
          { 
          LIMSTATS1 = StrTrim(StrExtract(line,1),"",2);    
          }
-        if ( key == "Net" )
+         if ( key == "emsg" )
+         { 
+         LIMERROR1 = StrTrim(StrExtract(line,1),"",2);
+            
+         }if ( key == "cash" )
          { 
          LIMCASH1 = StrTrim(StrExtract(line,1),"",2);     
          }
      }
      fclose( fh );
  } 
+ 
+ //DataFeed
+if(GUIEVEID == 3 AND GUIEVENT == 1 )
+{
+ShellExecute(FEEDSCRIPT,"","",1);
+}
 
-//GFX
+ //Backfill
+ NUMDAYBF= ""+NUMDAYBF;
+ PARABF = ""+PARABF;
+if(GUIEVEID == 4 AND GUIEVENT == 1 )
+{
+ShellExecute(BACKSCRIPT," \""+NUMDAYBF+"\" \""+PARABF+"\" ","",1);
+}
+ 
+ //GFX  
 GfxSetBkMode(1);
 GfxSelectFont("Verdhana", 14, 700, False ); 
 GfxSetTextColor(colorBrightGreen);
-GfxTextOut("Kotak",PX*2,PY*1.5);
+GfxTextOut("Flattrade",PX*2,PY*1.5);
+ 
 
-StatusLogin1= WriteIf(LOGDATE1 != NOWDATE, "Please Login", WriteIf(StaticVarGetText("NEOACSTOK"+USERNUM) == "", "Session Not Set", "Login Succesfull"));
+StatusLogin1 = WriteIf(LOGDATE1 != NOWDATE, "Please Login",  WriteIf(LOGERROR1 != "", LOGERROR1, WriteIf(LOGSTATS1 != "Ok", "Login Error", "Login Succesfull")));
 
 ColorLogin1 = IIf(StatusLogin1 == "Login Succesfull",colorBrightGreen,colorRed);
 GfxSetTextColor(ColorLogin1);
 
-StatusLimit1 = WriteIf(LIMCASH1 != "" AND LIMSTATS1 == "Ok" AND LOGDATE1 == NOWDATE,"Cash "+ LIMCASH1,"Get Limits");
+StatusLimit1 = WriteIf(LIMSTATS1 != "Ok",LIMERROR1, WriteIf(LIMSTATS1 == "Ok" AND LOGDATE1 == NOWDATE,"Cash "+ LIMCASH1,"Get Limits"));
 
 GfxTextOut(USERID1+" "+StatusLogin1+"          "+StatusLimit1,PX*30+PX*HX,PY*4.5+PY*HY);
+ 
 
-/*
-GfxTextOut(StaticVarGetText("NEOACSTOK"+USERNUM),PX*30+PX*HX,PY*8.5+PY*HY);
-GfxTextOut(StaticVarGetText("NEOSESTOK"+USERNUM),PX*30+PX*HX,PY*12.5+PY*HY);
-GfxTextOut(StaticVarGetText("NEOSESID"+USERNUM),PX*30+PX*HX,PY*16.5+PY*HY);
-GfxTextOut(StaticVarGetText("NEOERVERID"+USERNUM),PX*30+PX*HX,PY*20.5+PY*HY);
+
+ //HistData
+if(GUIEVEID == 5 AND GUIEVENT == 1 )
+{
+ShellExecute(HISTSCRIPT," \""+EXPDATEHDF+"\" \""+EXPDATEHDT+"\" \""+ENIMPORTDATA+"\" \""+ENDELETEDATA+"\" \""+FILETODOWN+"\" \""+TIMEFRAMEHD+"\" \""+PARAHD+"\"","",1);
+}
