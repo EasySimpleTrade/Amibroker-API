@@ -177,6 +177,9 @@ _TRACE(BuyMessage);
 //Telegram(BOTKEY,CHANNELID,BuyMessage); 
 }
 
+UPENTRY = StaticVarGet(SName+"UPENTRY");
+UPPNL = CZ - UPENTRY;
+
 //Sell
 if (LastValue(Sell)  AND StaticVarGet(SName+"INUPTRADE"))
 {
@@ -199,6 +202,9 @@ _TRACE(ShortMessage);
 //PopupWindow(ShortMessage, Name(),10,300,50);
 //Telegram(BOTKEY,CHANNELID,ShortMessage); 
 }
+
+DNENTRY = StaticVarGet(SName+"DNENTRY");
+DNPNL = CZ - DNENTRY;
 
 //Cover
 if (LastValue(Cover)  AND StaticVarGet(SName+"INDNTRADE"))
