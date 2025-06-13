@@ -149,6 +149,7 @@ def session_token(validate_url, SID, view_token, access_token, user_id, login_fi
         print(f"Session validated successfully, response saved to {login_file}")
     else:
         print(f"Failed to validate session: {session_response.text}")
+        input("Press any Key to Exit...")
 
 
 
