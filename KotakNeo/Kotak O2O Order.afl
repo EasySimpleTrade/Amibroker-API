@@ -63,6 +63,9 @@ EXPDATEN5 = ParamDate( "Expiry Date N50", "12-06-2025", 2 );
 EXPDATEBN = ParamDate( "Expiry Date BNF", "26-06-2025", 2 );
 EXPDATESX = ParamDate( "Expiry Date SEN", "30-08-2025", 2 );
 
+ISWKYSX = ParamToggle( "Weekly|Monthly SEN", "Monthly|Weekly",1);
+ISWKYN5 = ParamToggle( "Weekly|Monthly N50", "Monthly|Weekly",1);
+
 
 EnAlgo = ParamToggle("Enable Place Order","No|Yes",1);
 EnOrdNo = ParamToggle("Need Order No","No|Yes",0);
@@ -73,7 +76,7 @@ HX = Param("Button Horizontal Position",0,0,164);
 HY = Param("Button Vertical Position",0,0,89);
 _SECTION_END();
 
-ISWKYSX = ISWKYBN = ISWKYN5 = 0;
+
 
 //Prefix for Static Variable
 STGTAG = "O2O";
@@ -85,8 +88,8 @@ if (StrFind( Symbol, "SENSEX" ))
 {
 SPNAME = "SENSEX";
 STRDIF = 100;
-EXPDATE = EXPDATEMC;
-ISWKY = ISWKYMC;
+EXPDATE = EXPDATESX;
+ISWKY = ISWKYSX;
 LOTSIZE = 20;
 EXCSEG = "bse_fo";
 }
@@ -95,7 +98,7 @@ else if(StrFind( Symbol, "BANKNIFTY" ))
 SPNAME = "BANKNIFTY";
 STRDIF = 100;
 EXPDATE = EXPDATEBN;
-ISWKY = ISWKYBN;
+ISWKY = 0;//ISWKYBN;
 LOTSIZE = 30;
 EXCSEG = "nse_fo";
 }
@@ -126,8 +129,11 @@ STRIKE = SYMEXTR(DFEED,STRIKE,EXPDATE);
 
 //CEPE = WriteIf(StrFind(Name(),"PE"),"P","C");
 FTMM = DateTimeFormat("%#m",EXPDATE);
-EXPDATE = DateTimeFormat("%y",EXPDATE)+WriteIf(StrToNum(FTMM) > 10, StrLeft( DateTimeFormat("%b",EXPDATE),1),FTMM)+DateTimeFormat("%d",EXPDATE);
-OPNAME = SPNAME+EXPDATE+STRIKE+CEPEFUL;
+EXPDATEW = DateTimeFormat("%y",EXPDATE)+WriteIf(StrToNum(FTMM) > 10, StrLeft( DateTimeFormat("%b",EXPDATE),1),FTMM)+DateTimeFormat("%d",EXPDATE);
+EXPDATEM = DateTimeFormat("%y",EXPDATE)+StrToUpper( DateTimeFormat("%b",EXPDATE));
+
+if(ISWKY) OPNAME = SPNAME+EXPDATEW+STRIKE+CEPEFUL;
+else OPNAME = SPNAME+EXPDATEM+STRIKE+CEPEFUL;
 
 
 //Button Code Start----------------------------------------------------
