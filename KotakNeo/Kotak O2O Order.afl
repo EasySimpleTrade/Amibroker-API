@@ -1,0 +1,258 @@
+/*
+VALLAKKOTTAI MURUGAN THUNAI
+Easy Simple Trading Solutions
+Telegram @easysimpletradeupdates
+Website https://easysimpletrade.blogspot.com
+Youtube https://www.youtube.com/@easysimpletrade
+GitHub https://github.com/EasySimpleTrade
+*/
+
+RequestTimedRefresh(1,False);
+
+function SYMEXTR(iDatafeed,iName,iDate)
+{
+	//Amifeed
+	if(iDatafeed == "Amifeed")
+		{
+		result = StrReplace(iName,"WK","");
+		}	
+	else 	
+	//Valvenet VBiz BestRT
+	if(iDatafeed == "VBiz")
+		{
+		iDATEDMY = DateTimeFormat("%d",iDate) + StrToUpper(DateTimeFormat("%b",iDate)) + DateTimeFormat("%Y",iDate);
+		result = StrReplace(StrReplace(StrReplace(iName,"_",""),"-",""),iDATEDMY,"");
+		}
+	else
+	//Equalsolutions
+	if(iDatafeed == "EqualSolutions")
+		{
+		iDATEYM = DateTimeFormat("%y",iDate)+StrToUpper( DateTimeFormat("%b",iDate));
+		iDATED = DateTimeFormat("%d",iDate);
+		result = StrReplace(StrReplace(StrReplace(iName,"_",""),iDATEYM,""),iDATED,"");
+		}
+	else
+		
+	//Default
+		{
+		result = iName;
+		}
+    return result;    
+}
+
+//Strategy Code Start---------------------------------
+Buy = Sell = 0;
+//Strategy Code End -----------------------------------------
+
+
+_N(Title = StrFormat("{{NAME}} - {{INTERVAL}} {{DATE}} O %g, H %g, L %g, C %g, V %g  {{VALUES}}", O, H, L, C, V  ));
+SetChartOptions( 1, chartShowDates, chartGridMiddle, 0, 0, 0 );
+SetBarFillColor( IIf( C > O, ColorRGB( 0, 75, 0 ), IIf( C <= O, ColorRGB( 75, 0, 0 ), colorLightGrey ) ) );
+Plot( C, "", IIf( C > O, ColorRGB( 0, 255, 0 ), IIf( C <= O, ColorRGB( 255, 0, 0 ), colorLightGrey ) ), 64, Null, Null, 0, 0, 1 );
+
+//Defaults
+ND = Day() != Ref(Day(),-1);
+ED = Day()!= Ref(Day(), 1);
+TN = TimeNum();
+CZ = LastValue(C);
+TZ = LastValue(TN);
+
+_SECTION_BEGIN("Options to Options");
+DFEED = ParamList("Data Feed", "EST|Amifeed|VBiz|EqualSolutions",0);
+EXPDATEN5 = ParamDate( "Expiry Date N50", "12-06-2025", 2 );
+EXPDATEBN = ParamDate( "Expiry Date BNF", "26-06-2025", 2 );
+EXPDATESX = ParamDate( "Expiry Date SEN", "30-08-2025", 2 );
+
+
+EnAlgo = ParamToggle("Enable Place Order","No|Yes",1);
+EnOrdNo = ParamToggle("Need Order No","No|Yes",0);
+LOTS = Param("No. of Lots",1,1,50);
+OUTPATH = ParamStr("Path to Save Response","R:\\");
+USERNUM = Param("User Number",1,1,100,1);//For Multi User Accounts
+HX = Param("Button Horizontal Position",0,0,164);
+HY = Param("Button Vertical Position",0,0,89);
+_SECTION_END();
+
+ISWKYSX = ISWKYBN = ISWKYN5 = 0;
+
+//Prefix for Static Variable
+STGTAG = "O2O";
+SName = STGTAG+Name()+Interval();
+
+Symbol = Name();
+
+if (StrFind( Symbol, "SENSEX" ))
+{
+SPNAME = "SENSEX";
+STRDIF = 100;
+EXPDATE = EXPDATEMC;
+ISWKY = ISWKYMC;
+LOTSIZE = 20;
+EXCSEG = "bse_fo";
+}
+else if(StrFind( Symbol, "BANKNIFTY" ))
+{
+SPNAME = "BANKNIFTY";
+STRDIF = 100;
+EXPDATE = EXPDATEBN;
+ISWKY = ISWKYBN;
+LOTSIZE = 30;
+EXCSEG = "nse_fo";
+}
+else if (StrFind( Symbol, "NIFTY" ))
+{
+SPNAME = "NIFTY";
+STRDIF = 100;
+EXPDATE = EXPDATEN5;
+ISWKY = ISWKYN5;
+LOTSIZE = 75;
+EXCSEG = "nse_fo";
+}
+else
+{
+SPNAME = Symbol;
+STRDIF = 1;
+EXPDATE = EXPDATEBN;
+ISWKY = ISWKYBN;
+LOTSIZE = 10;
+EXCSEG = "nse_fo";
+}
+
+CEPEFUL = WriteIf(StrFind(Name(),"PE"),"PE","CE");
+
+STRIKE = StrReplace(StrReplace(Symbol,SPNAME,""),CEPEFUL,"");
+STRIKE = SYMEXTR(DFEED,STRIKE,EXPDATE);
+
+
+//CEPE = WriteIf(StrFind(Name(),"PE"),"P","C");
+FTMM = DateTimeFormat("%#m",EXPDATE);
+EXPDATE = DateTimeFormat("%y",EXPDATE)+WriteIf(StrToNum(FTMM) > 10, StrLeft( DateTimeFormat("%b",EXPDATE),1),FTMM)+DateTimeFormat("%d",EXPDATE);
+OPNAME = SPNAME+EXPDATE+STRIKE+CEPEFUL;
+
+
+//Button Code Start----------------------------------------------------
+PX = 10;//round(Status("pxwidth")/164);
+PY = 10;//round(Status("pxheight")/89);
+
+Reset = 0;
+
+BuyBut = 2;
+SellBut = 3;
+
+ResetBut = 6;
+
+
+GuiButton( "Buy "+CEPEFUL, BuyBut,  PX*1+PX*HX, PY*2+PY*HY, PY*6, PY*3, notifyClicked );
+GuiButton( "Sell "+CEPEFUL, SellBut,  PX*8+PX*HX, PY*2+PY*HY, PY*6, PY*3, notifyClicked );
+
+GuiButton( "Reset", ResetBut, PX*15+PX*HX, PY*2+PY*HY, PY*6, PY*3, notifyClicked );
+
+GuiSetColors( 2, 2, 2, colorBlack, colorLime,colorGreen,-1,colorGreen);
+GuiSetColors( 3, 3, 2, colorYellow, colorOrange,colorRed,-1,colorRed);
+GuiSetColors( 6, 6, 2, colorBlack, colorYellow, colorGold,-1,colorGold );
+
+function HandleEvents() 
+{ 
+    for ( n = 0;id = GuiGetEvent( n, 0 );n++ )
+    { 
+        code = GuiGetEvent( n, 1 ); 
+
+         switch ( id ) 
+        { 
+             case BuyBut:                                   
+             Buy = 1;             
+             break; 
+             
+             case SellBut: 
+             Sell = 1;
+             break;              
+             
+             case ResetBut: 
+             Reset = 1;
+             break;                                      
+        } 
+    } 
+} 
+HandleEvents();
+
+if(Reset)
+{
+StaticVarSet(SName+"INUPTRADE",0);
+StaticVarSet(SName+"UPENTRY",0);
+StaticVarSet(SName+"UPExitTime",0);
+
+}
+
+//Button Code End--------------------------------------
+
+//Order Place Code Start-----------------------------------------------------------
+NEO_ORD_URL = "https://gw-napi.kotaksecurities.com/Orders/2.0/quick/order/rule/ms/place?sId=";
+NEO_KEY = "neotradeapi";
+function KotakOrder(TRA_TYP,TRD_SYM,QTY,PRIC,TRG_PRI,PR_TYP,PRODUCT,EXC,SER_ID,SES_ID,ACS_TOK,SES_TOK,ORD_URL,KEY,OUT)
+{
+ShellExecute("Curl.exe","-X POST \""+ORD_URL+""+SER_ID+"\" -H \"accept: application/json\" -H \"Auth: "+SES_TOK+"\" -H \"Sid: "+SES_ID+"\" -H \"neo-fin-key: "+KEY+"\"  -H \"Content-Type: application/x-www-form-urlencoded\" -H \"Authorization: Bearer "+ACS_TOK+"\" -d \"jData={\\\"am\\\":\\\"NO\\\",\\\"dq\\\":\\\"0\\\",\\\"es\\\":\\\""+EXC+"\\\",\\\"mp\\\":\\\"0\\\",\\\"pc\\\":\\\""+PRODUCT+"\\\",\\\"pf\\\":\\\"N\\\",\\\"pr\\\":\\\""+PRIC+"\\\",\\\"pt\\\":\\\""+PR_TYP+"\\\",\\\"qt\\\":\\\""+QTY+"\\\",\\\"rt\\\":\\\"DAY\\\",\\\"tp\\\":\\\""+TRG_PRI+"\\\",\\\"ts\\\":\\\""+TRD_SYM+"\\\",\\\"tt\\\":\\\""+TRA_TYP+"\\\"}\"  "+OUT+"","",0);
+return;
+}
+
+/*
+//Telegram Alert Function
+function Telegram(Key,ID,Message)
+{
+ih = InternetOpenURL("https://api.telegram.org/bot"+Key+"/sendMessage?chat_id="+ID+"&text="+Message); 
+if(ih) InternetClose( ih );
+return ;
+}
+
+//Telegram
+BOTKEY = ParamStr("Telegram Bot Key","");
+CHANNELID = ParamStr("Channel ID","");
+
+*/
+
+NEOACSTOK1 = StaticVarGetText("NEOACSTOK"+USERNUM);
+NEOSESTOK1 = StaticVarGetText("NEOSESTOK"+USERNUM);
+NEOSESID1 = StaticVarGetText("NEOSESID"+USERNUM);
+NEOSERID1 = StaticVarGetText("NEOSERVERID"+USERNUM);
+
+OUTRESP1 = WriteIf(EnOrdNo,"-o "+OUTPATH+"\\"+Name()+USERNUM+".txt","");
+SESSIONOK = NEOACSTOK1 != "" AND NEOSESTOK1 != "" ;
+
+//Quantity
+QTY = ""+LOTS * LOTSIZE;
+
+//EXCHANGE = "NFO" ;//NSE NFO CDS MCX BSE BFO
+
+//Messages
+BuyMessage = "Buy "+OPNAME+" Qty "+QTY+" @ "+CZ;
+SellMessage = "Sell "+OPNAME+" Qty "+QTY+" @ "+CZ;
+
+//Order Place Function Parameters: Buy/Sell, Symbol, Quantity, Price,Trigger Price, PriceType MKT, L, SL, SL-M, Product NRML,CNC,MIS,CO, EXCSEG nse_cm, bse_cm, nse_fo, bse_fo, cde_fo, mcx_fo,API Credentials,Respone enable and path
+
+if (LastValue(Buy)  AND Nz(StaticVarGet(SName+"INUPTRADE")) == 0  AND Nz(StaticVarGet(SName+"UPExitTime")) != TZ)
+{
+if(EnAlgo AND SESSIONOK) KotakOrder("B",OPNAME,QTY,"0","0","MKT","NRML",EXCSEG,NEOSERID1,NEOSESID1,NEOACSTOK1,NEOSESTOK1,NEO_ORD_URL,NEO_KEY,OUTRESP1);
+_TRACE(BuyMessage);
+StaticVarSet(SName+"INUPTRADE",1);
+//PopupWindow(BuyMessage, Name(),5,800,50);
+//Telegram(BOTKEY,CHANNELID,BuyMessage); 
+}
+
+if (LastValue(Sell)  AND StaticVarGet(SName+"INUPTRADE") )
+{
+if(EnAlgo AND SESSIONOK) KotakOrder("S",OPNAME,QTY,"0","0","MKT","NRML",EXCSEG,NEOSERID1,NEOSESID1,NEOACSTOK1,NEOSESTOK1,NEO_ORD_URL,NEO_KEY,OUTRESP1);
+_TRACE(SellMessage);
+StaticVarSet(SName+"INUPTRADE",0);
+StaticVarSet(SName+"UPExitTime", TZ);
+//PopupWindow(SellMessage, Name(),5,800,50);
+//Telegram(BOTKEY,CHANNELID,SellMessage); 
+}
+
+
+//Dashboard
+
+BoardColor = IIf(StaticVarGet(SName+"INUPTRADE") AND CEPEFUL == "CE", colorPaleGreen,IIf(StaticVarGet(SName+"INUPTRADE") AND CEPEFUL == "PE", colorPink,IIf(EnAlgo  AND SESSIONOK,colorYellow,colorWhite)));
+GfxSetBkColor(BoardColor);
+GfxSelectSolidBrush(BoardColor);
+GfxRoundRect(PX*1, PY*6, PX*28, PY*12,PX,PX);
+GfxTextOut(OPNAME+" "+QTY, PX*2, PY*7);
+if(EnAlgo AND !SESSIONOK)GfxTextOut("Not Logged In", PX*2, PY*9); 
