@@ -28,7 +28,8 @@ function OPSYM(iDatafeed,iName,iStrike,iOption,iDate,iWeekly)
 	if(iDatafeed == "Kotak")
 		{
 		FTMM = DateTimeFormat("%#m",iDate);
-		result = iName+DateTimeFormat("%y",iDate)+WriteIf(StrToNum(FTMM) > 10, StrLeft( DateTimeFormat("%b",iDate),1),FTMM)+DateTimeFormat("%d",iDate)+iStrike+iOption;
+		if(iWeekly==1)	result = iName+DateTimeFormat("%y",iDate)+WriteIf(StrToNum(FTMM) > 10, StrLeft( DateTimeFormat("%b",iDate),1),FTMM)+DateTimeFormat("%d",iDate)+iStrike+iOption;
+		else 			result = iName+DateTimeFormat("%y",iDate)+StrToUpper( DateTimeFormat("%b",iDate))+iStrike+iOption;
 		}
 	else 
 	//Default
@@ -51,6 +52,10 @@ EXPDATEN5 = ParamDate( "Expiry Date N50", "12-06-2025", 2 );
 EXPDATEBN = ParamDate( "Expiry Date BNF", "26-06-2025", 2 );
 EXPDATESX = ParamDate( "Expiry Date SEN", "27-05-2025", 2 );
 
+ISWKYSX = ParamToggle( "Weekly|Monthly SEN", "Monthly|Weekly",1);
+ISWKYN5 = ParamToggle( "Weekly|Monthly N50", "Monthly|Weekly",1);
+
+
 UPNSTRK = Param("Strikes from ATM UPTrend", 3, -50 ,50,1);
 DNNSTRK = Param("Strikes from ATM DNTrend", 3, -50 ,50,1);
 EnAlgo = ParamToggle("Enable Algo","No|Yes",1);
@@ -62,7 +67,7 @@ HX = Param("Button Horizontal Position",0,0,164);
 HY = Param("Button Vertical Position",0,0,89);
 _SECTION_END();
 
-ISWKYSX = ISWKYBN = ISWKYN5 = 0;
+//ISWKYSX = ISWKYN5 = 0;
 
 //Prefix for Static Variable
 STGTAG = "U2O";
@@ -82,7 +87,7 @@ else if(StrFind( Name(), "BANKNIFTY" ))
 SPNAME = "BANKNIFTY";
 STRDIF = 100;
 EXPDATE = EXPDATEBN;
-ISWKY = ISWKYBN;
+ISWKY = 0;//ISWKYBN;
 LOTSIZE = 30;
 EXCSEG = "nse_fo";
 }
