@@ -10,8 +10,36 @@ GitHub https://github.com/EasySimpleTrade
 RequestTimedRefresh(1,False);
 GfxSetOverlayMode(2);
 
-NUMOFDAYS = Param("Number of Days to Backfilll",7,0,750,1);
-PARLDOWN = Param("Number of Parallel Downloads",10,1,50,1);
+_SECTION_BEGIN("Flattrade Backfill");
+//Backfill
+NUMDAYBF= Param("Number of Days to Backfilll",7,0,750,1);
+PARABF = Param("Number of Parallel Backfill",10,1,50,1);
+
+
+_SECTION_BEGIN("Flattrade Historical Data");
+//Historical Data
+FILETODOHD =  Paramstr("Historical Data download Master","ScripMaster");
+iEXPDATEHDF = ParamDate("Historical Data from",Now(1),2);
+EXPDATEHDF = DateTimeFormat("%d",iEXPDATEHDF)+"-"+StrToUpper( DateTimeFormat("%m",iEXPDATEHDF))+"-"+DateTimeFormat("%Y",iEXPDATEHDF);
+iEXPDATEHDT = ParamDate("Historical DataTo",Now(1),2);
+EXPDATEHDT = DateTimeFormat("%d",iEXPDATEHDT)+"-"+StrToUpper( DateTimeFormat("%m",iEXPDATEHDT))+"-"+DateTimeFormat("%Y",iEXPDATEHDT);
+ENIMPORTDATAHD = ParamList("Import Downloaded Hist Data","Yes|No");
+ENDELETEDATAHD = ParamList("Delete DownladedHist Data","Yes|No");
+TIMEFRAMEHD= ParamList("Historical Data TimeFrame ","1|3|5|10|15|30|60|120");
+PARAHD = Param("Number of Parallel Hist Downloads",10,1,50,1);
+
+
+_SECTION_BEGIN("EOD Data");
+FILETODOED =  Paramstr("EOD Data download List","EODList");
+iEXPDATEEDF = ParamDate("EOD Data from",Now(1),2);
+EXPDATEEDF = DateTimeFormat("%d",iEXPDATEHDF)+"-"+StrToUpper( DateTimeFormat("%m",iEXPDATEHDF))+"-"+DateTimeFormat("%Y",iEXPDATEHDF);
+iEXPDATEEDT = ParamDate("EOD DataTo",Now(1),2);
+EXPDATEEDT = DateTimeFormat("%d",iEXPDATEHDT)+"-"+StrToUpper( DateTimeFormat("%m",iEXPDATEHDT))+"-"+DateTimeFormat("%Y",iEXPDATEHDT);
+ENIMPORTDATAED = ParamList("Import Downloaded EOD Data","Yes|No");
+ENDELETEDATAED = ParamList("Delete Downladed EOD Data","Yes|No");
+PARAED = Param("Number of Parallel EOD Downloads",25,1,50,1);
+
+_SECTION_BEGIN("Flattrade Dashboard");
 RESPPATH = ParamStr("Path to Response Files","R:\\");
 DATAPATH = ParamStr("Path to  Data Files","C:\\API\\");
 USERNUM = Param("User Number",1,1,100,1);
@@ -23,6 +51,8 @@ LIMITSSCRIPT1 = DATAPATH+"Flattrade Limits "+USERNUM+".py";
 FEEDSCRIPT = DATAPATH+"FlatTrade OneMinuteFeed.py";
 BACKSCRIPT = DATAPATH+"FlatTrade Backfill.py";
 HISTSCRIPT = DATAPATH+"FlatTrade HistData.py";
+EODSCRIPT = DATAPATH+"FlatTrade EODData.py";
+
 
 //Button
 HX = Param("Button Horizontal Position",0,0,164);
@@ -35,10 +65,11 @@ GuiButton( "Login", 1,  PX*2+PX*HX, PY*4+PY*HY, PX*7, PY*3, notifyClicked );
 GuiButton( "Limits", 2,  PX*10+PX*HX, PY*4+PY*HY, PX*7, PY*3, notifyClicked );
 GuiButton( "Start Feed",3,  PX*2+PX*HX, PY*8+PY*HY, PX*7, PY*3, notifyClicked );
 GuiButton( "Backfill",4,  PX*10+PX*HX, PY*8+PY*HY, PX*7, PY*3, notifyClicked );
-GuiButton( "HistData",5,  PX*2+PX*HX, PY*12+PY*HY, PX*7, PY*3, notifyClicked );
+GuiButton( "Hist Data",5,  PX*2+PX*HX, PY*12+PY*HY, PX*7, PY*3, notifyClicked );
+GuiButton( "EOD Data",6,  PX*10+PX*HX, PY*12+PY*HY, PX*7, PY*3, notifyClicked );
 
 GuiSetColors( 1, 1, 2, colorBlack, colorLime,colorGreen,-1,colorGreen);
-GuiSetColors( 2, 5, 2, colorBlack, colorYellow, colorGold,-1,colorGold );
+GuiSetColors( 2, 6, 2, colorBlack, colorYellow, colorGold,-1,colorGold );
 
 
 GUIEVEID = GuiGetEvent( 0, 0 );
@@ -54,7 +85,6 @@ fdelete(LOGINFILE1);
 fdelete(LIMITSFILE1);
 StaticVarRemove("FLA*");
 ShellExecute(LOGINSCRIPT1,"","",1);
-StaticVarSet("FLASTATIC"+USERNUM,1);
 }
 
 
@@ -95,16 +125,15 @@ NOWDATE = DateTimeFormat( "%d", Now(5) );
 
 
 
-if(StaticVarGet("FLASTATIC"+USERNUM) AND LOGSTATS1 == "Ok" AND LOGDATE1 == NOWDATE  AND ACSTOK1 != "")
+if(StaticVarGetText("FLATOKEN"+USERNUM) == "" AND LOGSTATS1 == "Ok" AND LOGDATE1 == NOWDATE  AND ACSTOK1 != "")
 {
 _TRACE("Setting FlatTrade Session "+USERNUM);
 StaticVarSetText("FLAUSERID"+USERNUM,USERID1);
 StaticVarSetText("FLATOKEN"+USERNUM,ACSTOK1);
 ShellExecute(LIMITSSCRIPT1," \""+StaticVarGetText("FLAUSERID"+USERNUM)+"\" \""+StaticVarGetText("FLATOKEN"+USERNUM)+"\" ","",1);
-StaticVarSet("FLASTATIC"+USERNUM,0);
 }
 
-if(GUIEVEID == 2 AND GUIEVENT == 1  AND StaticVarGetText("GWCTOKEN"+USERNUM) != "" )
+if(GUIEVEID == 2 AND GUIEVENT == 1  AND StaticVarGetText("FLATOKEN"+USERNUM) != "" )
 {
 ShellExecute(LIMITSSCRIPT1," \""+StaticVarGetText("FLAUSERID"+USERNUM)+"\" \""+StaticVarGetText("FLATOKEN"+USERNUM)+"\" ","",1);
 }
@@ -142,11 +171,11 @@ ShellExecute(FEEDSCRIPT,"","",1);
 }
 
  //Backfill
- NUMOFDAYS = ""+NUMOFDAYS;
- PARLDOWN = ""+PARLDOWN;
+ NUMDAYBF= ""+NUMDAYBF;
+ PARABF = ""+PARABF;
 if(GUIEVEID == 4 AND GUIEVENT == 1 )
 {
-ShellExecute(BACKSCRIPT," \""+NUMOFDAYS+"\" \""+PARLDOWN+"\" ","",1);
+ShellExecute(BACKSCRIPT," \""+NUMDAYBF+"\" \""+PARABF+"\" ","",1);
 }
  
  //GFX  
@@ -165,17 +194,16 @@ StatusLimit1 = WriteIf(LIMSTATS1 != "Ok",LIMERROR1, WriteIf(LIMSTATS1 == "Ok" AN
 
 GfxTextOut(USERID1+" "+StatusLogin1+"          "+StatusLimit1,PX*30+PX*HX,PY*4.5+PY*HY);
  
-//Historical Data
-FILETODOWN =  Paramstr("Historical download Master","ScripMaster");
-iEXPDATEHDF = ParamDate("Historical Back fill from",Now(1),2);
-EXPDATEHDF = DateTimeFormat("%d",iEXPDATEHDF)+"-"+StrToUpper( DateTimeFormat("%m",iEXPDATEHDF))+"-"+DateTimeFormat("%Y",iEXPDATEHDF);
-iEXPDATEHDT = ParamDate("Historical Back fill To",Now(1),2);
-EXPDATEHDT = DateTimeFormat("%d",iEXPDATEHDT)+"-"+StrToUpper( DateTimeFormat("%m",iEXPDATEHDT))+"-"+DateTimeFormat("%Y",iEXPDATEHDT);
-ENIMPORTDATA = ParamList("Import Downloaded Data","Yes|No");
-ENDELETEDATA = ParamList("Delete Delete Data","Yes|No");
+
 
  //HistData
 if(GUIEVEID == 5 AND GUIEVENT == 1 )
 {
-ShellExecute(HISTSCRIPT," \""+EXPDATEHDF+"\" \""+EXPDATEHDT+"\" \""+ENIMPORTDATA+"\" \""+ENDELETEDATA+"\" \""+FILETODOWN+"\" ","",1);
+ShellExecute(HISTSCRIPT," \""+EXPDATEHDF+"\" \""+EXPDATEHDT+"\" \""+ENIMPORTDATAHD+"\" \""+ENDELETEDATAHD+"\" \""+FILETODOHD+"\" \""+TIMEFRAMEHD+"\" \""+PARAHD+"\"","",1);
+}
+
+ //EOD Data
+if(GUIEVEID == 6 AND GUIEVENT == 1 )
+{
+ShellExecute(EODSCRIPT," \""+EXPDATEEDF+"\" \""+EXPDATEEDT+"\" \""+ENIMPORTDATAED+"\" \""+ENDELETEDATAED+"\" \""+FILETODOED+"\"  \""+PARAED+"\"","",1);
 }
