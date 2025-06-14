@@ -14,27 +14,27 @@ RESPPATH = ParamStr("Path to Response Files","R:\\");
 DATAPATH = ParamStr("Path to  Data Files","C:\\API\\");
 
  //Nifty Options
-iEXPDATEN5 = ParamDate("Nifty Exp Date","29-05-2025",2);
+iEXPDATEN5 = ParamDate("Nifty Exp Date",Now(1),2);
 EXPDATEN5 = DateTimeFormat("%d",iEXPDATEN5)+"-"+StrToUpper( DateTimeFormat("%b",iEXPDATEN5))+"-"+DateTimeFormat("%Y",iEXPDATEN5);
 STRIKEMINN5 = Param("Nifty from Strike",21000,1,100000);
 STRIKEMAXN5 = Param("Nifty to Strike",27000,1,100000);
 
  //Bank Nifty Options
-iEXPDATEME = ParamDate("Monthly Exp Date","26-06-2025",2);
+iEXPDATEME = ParamDate("Monthly Exp Date",Now(1),2);
 EXPDATEME = DateTimeFormat("%d",iEXPDATEME)+"-"+StrToUpper( DateTimeFormat("%b",iEXPDATEME))+"-"+DateTimeFormat("%Y",iEXPDATEME);
 STRIKEMINBN = Param("BankNifty from Strike",40000,1,100000);
 STRIKEMAXBN = Param("BankNifty to Strike",60000,1,100000);
 
 
  //Sensex Options
-iEXPDATESX = ParamDate("Sensex Wk Exp Date","03-06-2025",2);
+iEXPDATESX = ParamDate("Sensex Wk Exp Date",Now(1),2);
 EXPDATESX = DateTimeFormat("%d",iEXPDATESX)+"-"+StrToUpper( DateTimeFormat("%b",iEXPDATESX))+"-"+DateTimeFormat("%Y",iEXPDATESX);
 STRIKEMINSX = Param("Sensex from Strike",70000,1,100000);
 STRIKEMAXSX = Param("Sensex to Strike",90000,1,100000);
 
 //Single FNO
 FNONAME = Paramstr("Single FNO Name","SILVERMIC");
-iEXPDATESI = ParamDate("Single FNO Exp Date","30-06-2025",2);
+iEXPDATESI = ParamDate("Single FNO Exp Date",Now(1),2);
 EXPDATESI = DateTimeFormat("%d",iEXPDATESI)+"-"+StrToUpper( DateTimeFormat("%b",iEXPDATESI))+"-"+DateTimeFormat("%Y",iEXPDATESI);
 STRIKEMINSI = Param("Single FNO from Strike",0,200000);
 STRIKEMAXSI = Param("Single FNO to Strike",100000,1,200000);
