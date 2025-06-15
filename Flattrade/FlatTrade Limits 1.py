@@ -4,8 +4,8 @@ import requests
 import sys
 
 
-login_file = r"R:\FlattradeLogin1.txt" #Chck drive letter
-limits_file = r"R:\FlattradeLimits1.txt" #Check drive letter
+login_file = r"R:\FlattradeLogin1.txt"
+limits_file = r"R:\FlattradeLimits1.txt"
 base_url = 'https://piconnect.flattrade.in/PiConnectTP/'
 limits_ep = 'Limits'
 
@@ -25,12 +25,19 @@ jdata = {
 limits_url = base_url+limits_ep
 limits_payload = f'jData={json.dumps(jdata)}&jKey={jkey}'
 
-limits_response = requests.post(limits_url, data=limits_payload)
-limits_data = limits_response.json()
-print(limits_data) 
-with open(limits_file, mode='w', newline='') as file:
-    writer = csv.writer(file)
-    for key, value in limits_data.items():
-        writer.writerow([key, value])
-
-
+try:
+    limits_response = requests.post(limits_url, data=limits_payload)
+    limits_data = limits_response.json()
+    with open(limits_file, mode='w', newline='') as file:
+        writer = csv.writer(file)
+        for key, value in limits_data.items():
+            writer.writerow([key, value])
+except ValueError as e:
+    print(f"JSON decode error: {e}")
+    input("Press Enter to exit...")
+except requests.exceptions.SSLError as e:
+    print(f"SSL error: {e}")
+    input("Press Enter to exit...")
+except requests.exceptions.RequestException as e:
+    print(f"Request error: {e}")
+    input("Press Enter to exit...")
