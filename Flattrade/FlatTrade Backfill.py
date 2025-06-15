@@ -1,3 +1,12 @@
+'''
+VALLAKKOTTAI MURUGAN THUNAI
+Easy Simple Trading Solutions
+Telegram @easysimpletradeupdates
+Website https://easysimpletrade.blogspot.com
+Youtube https://www.youtube.com/@easysimpletrade
+GitHub https://github.com/EasySimpleTrade
+'''
+
 import pandas as pd
 import asyncio
 import aiohttp
@@ -12,27 +21,19 @@ import ssl
 import certifi
 
 
-
 #Inputs
 master_list = r'C:\API\ScripMaster.csv'
+login_file = r"R:\FlattradeLogin1.txt"
+output_dir = r'R:'
+base_url = "https://piconnect.flattrade.in/PiConnectTP/"
+historical_ep = 'TPSeries'
 
 #num_of_days = 7
-#batch_size = 50
+#batch_size = 20
 num_of_days = int(sys.argv[1])
 batch_size = int(sys.argv[2])
 start_date = (datetime.now() - timedelta(days=num_of_days)).strftime('%d-%m-%Y')
-#start_date = '30-04-2025'
-#end_date = '17-12-2025'
-#start_date = datetime.today().strftime('%d-%m-%Y')
 end_date = datetime.today().strftime('%d-%m-%Y')
-
-
-login_file = r"R:\FlattradeLogin1.txt"
-output_dir = r'R:'
-
-
-base_url = "https://piconnect.flattrade.in/PiConnectTP/"
-historical_ep = 'TPSeries'
 
 
 def read_csv_dict(file_path):
@@ -45,7 +46,7 @@ def read_csv_dict(file_path):
     return data_dict
 
 
-# PC Timw now
+# PC Time now
 def pc_time():
     return datetime.now().strftime('%d-%m-%Y %H:%M:%S')
 
@@ -60,7 +61,7 @@ def epoch(date, time):
     dt = datetime.strptime(f"{date} {time}", '%d-%m-%Y %H:%M:%S')
     return int(dt.timestamp())
 
-async def fetch_symbol_data(session, url, payload, symbol, token, retries=5, delay=3):
+async def hist_data_single(session, url, payload, symbol, token, retries=5, delay=3):
     RETRYABLE_STATUSES = {400, 524, 500, 502, 503}
     
     # Create SSL context with certifi
@@ -105,7 +106,7 @@ async def fetch_symbol_data(session, url, payload, symbol, token, retries=5, del
     print(f"Max retries reached for {symbol} {token}")
     return []
 
-async def hist_data_combined(base_url, end_point, user_id, jkey, master_list, startdate, enddate, output_dir, batchsize=25):
+async def hist_data_list(base_url, end_point, user_id, jkey, master_list, startdate, enddate, output_dir, batchsize=25):
     df_master = pd.read_csv(master_list, names=["Exchange", "Symbol", "Token"])
     df_master = df_master[df_master['Exchange'] != 'Exchange']
     url = f"{base_url}{end_point}"
@@ -124,7 +125,7 @@ async def hist_data_combined(base_url, end_point, user_id, jkey, master_list, st
                     "intrv": '1'
                 }
                 payload = f'jData={json.dumps(jdata)}&jKey={jkey}'
-                tasks.append(fetch_symbol_data(session, url, payload, row['Symbol'], row['Token']))
+                tasks.append(hist_data_single(session, url, payload, row['Symbol'], row['Token']))
             results = await asyncio.gather(*tasks)
             all_rows = [row for result in results for row in result]
             if all_rows:
@@ -153,6 +154,6 @@ print(f"User ID: {user_id}")
 print(f"JKey: {jkey}")
 print(pc_time())
 print(start_date, "-", end_date)
-asyncio.run(hist_data_combined(base_url, historical_ep, user_id, jkey, master_list, startdate, enddate, output_dir, batch_size))
+asyncio.run(hist_data_list(base_url, historical_ep, user_id, jkey, master_list, startdate, enddate, output_dir, batch_size))
 print(pc_time())
 input("Press Enter to exit...")
