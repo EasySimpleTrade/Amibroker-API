@@ -9,6 +9,13 @@ GitHub https://github.com/EasySimpleTrade
 
 RequestTimedRefresh(1,False);
 
+//Chart Code Start ----------------------------
+_N(Title = StrFormat("{{NAME}} - {{INTERVAL}} {{DATE}} O %g, H %g, L %g, C %g  {{VALUES}}", O, H, L, C  ));
+SetChartOptions(0,chartShowArrows|chartShowDates);
+SetBarFillColor( IIf( C > O, ColorRGB( 0, 75, 0 ), IIf( C <= O, ColorRGB( 75, 0, 0 ), colorLightGrey ) ) );
+Plot( C, "", IIf( C > O, ColorRGB( 0, 255, 0 ), IIf( C <= O, ColorRGB( 255, 0, 0 ), colorLightGrey ) ), 64, Null, Null, 0, 0, 1 );
+//Chart Code End ---------------------------------------
+
 //Strategy Code Start---------------------------------
 Buy = Sell = Short = Cover = 0;
 //Strategy Code End -----------------------------------------
@@ -18,30 +25,20 @@ CZ = LastValue(C);
 TN = TimeNum();
 TZ = LastValue(TN);
 
-//Chart Code Start ----------------------------
-_N(Title = StrFormat("{{NAME}} - {{INTERVAL}} {{DATE}} O %g, H %g, L %g, C %g  {{VALUES}}", O, H, L, C  ));
-SetChartOptions(0,chartShowArrows|chartShowDates);
-SetBarFillColor( IIf( C > O, ColorRGB( 0, 75, 0 ), IIf( C <= O, ColorRGB( 75, 0, 0 ), colorLightGrey ) ) );
-Plot( C, "", IIf( C > O, ColorRGB( 0, 255, 0 ), IIf( C <= O, ColorRGB( 255, 0, 0 ), colorLightGrey ) ), 64, Null, Null, 0, 0, 1 );
-//Chart Code End ---------------------------------------
-
-
-_SECTION_BEGIN("Kotak Equity Order");
 //Parameters
+_SECTION_BEGIN("Kotak Equity Order");
 TDVAL = Param("Position Size", 10000,1000,1000000,1000);
 EnAlgo = ParamToggle("Enable Algo","No|Yes",1);
 EnOrdNo = ParamToggle("Need Order No","No|Yes",0);
 OUTPATH = ParamStr("Path to Save Response","R:\\");
-USERNUM1 = Param("User Number for Multi Account",1,1,100,1);//For Multi User Accounts
 EQSUF = ParamStr("NSE Equity Symbol Suffix", "-EQ");
+STGTAG = ParamStr("Strategy Tag","EQUITY");
 
 HX = Param("Button Horizontal Position",0,0,164);
 HY = Param("Button Vertical Position",0,0,89);
 _SECTION_END();
 
-
-//Static Variable
-STGTAG = "EQUITY";
+//Prefix for Static Variable
 SName = STGTAG+Name()+Interval();
 
 //Button-------------------------------------------
@@ -51,22 +48,13 @@ PY = 10;//round(Status("pxheight")/89);
 
 Reset = 0;
 
-ButtonID1 = 1;
-ButtonID2 = 2;
-ButtonID3 = 3;
-ButtonID4 = 4;
-ButtonID5 = 5;
+GuiButton( "Buy", 1,  PX*1+PX*HX, PY*2+PY*HY, PY*6, PY*3, notifyClicked );
+GuiButton( "Sell", 2,  PX*8+PX*HX, PY*2+PY*HY, PY*6, PY*3, notifyClicked );
 
+GuiButton( "Short",3,  PX*1+PX*HX, PY*6+PY*HY, PY*6, PY*3, notifyClicked );
+GuiButton( "Cover", 4,  PX*8+PX*HX, PY*6+PY*HY, PY*6, PY*3, notifyClicked );
 
-GuiButton( "Buy", ButtonID1,  PX*1+PX*HX, PY*2+PY*HY, PY*6, PY*3, notifyClicked );
-GuiButton( "Sell", ButtonID2,  PX*8+PX*HX, PY*2+PY*HY, PY*6, PY*3, notifyClicked );
-
-GuiButton( "Short",ButtonID3,  PX*1+PX*HX, PY*6+PY*HY, PY*6, PY*3, notifyClicked );
-GuiButton( "Cover", ButtonID4,  PX*8+PX*HX, PY*6+PY*HY, PY*6, PY*3, notifyClicked );
-
-GuiButton( "Reset", ButtonID5, PX*15+PX*HX, PY*2+PY*HY, PY*6, PY*3, notifyClicked );
-
-
+GuiButton( "Reset", 5, PX*15+PX*HX, PY*2+PY*HY, PY*6, PY*3, notifyClicked );
 
 GuiSetColors( 1, 2, 2, colorBlack, colorLime,colorGreen,-1,colorGreen);
 GuiSetColors( 3, 4, 2, colorYellow, colorOrange,colorRed,-1,colorRed);
@@ -79,27 +67,27 @@ function HandleEvents()
         code = GuiGetEvent( n, 1 ); 
          switch ( id ) 
         { 
-             case ButtonID1:                      
+             case 1:                      
              Buy = 1;             
              break;
               
-             case ButtonID2:                     
+             case 2:                     
              Sell = 1;             
              break; 
                          
-             case ButtonID3:                        
+             case 3:                        
              Short= 1;             
              break;
              
-             case ButtonID4:                       
+             case 4:                       
              Cover = 1;             
              break;
              
-             case ButtonID5:                      
+             case 5:                      
              Reset = 1;            
              break;   
              
-             case ButtonID6:                        
+             case 6:                        
              Button6 = 1;            
              break;                           
         } 
@@ -107,16 +95,15 @@ function HandleEvents()
 } 
 HandleEvents();
 
-
-
 //Button Code End--------------------------------------
 
 //API------------------------------------------------------------
 NEO_ORD_URL = "https://gw-napi.kotaksecurities.com/Orders/2.0/quick/order/rule/ms/place?sId=";
 NEO_KEY = "neotradeapi";
-function KotakOrder(TRA_TYP,TRD_SYM,QTY,PRIC,TRG_PRI,PR_TYP,PRODUCT,EXC,SER_ID,SES_ID,ACS_TOK,SES_TOK,ORD_URL,KEY,OUT)
+
+function KotakOrder(TRA_TYP,TRD_SYM,QTY,PRIC,TRG_PRI,PR_TYP,PRODUCT,EXC,SER_ID,SES_ID,ACS_TOK,SES_TOK,OUT)
 {
-ShellExecute("Curl.exe","-X POST \""+ORD_URL+""+SER_ID+"\" -H \"accept: application/json\" -H \"Auth: "+SES_TOK+"\" -H \"Sid: "+SES_ID+"\" -H \"neo-fin-key: "+KEY+"\"  -H \"Content-Type: application/x-www-form-urlencoded\" -H \"Authorization: Bearer "+ACS_TOK+"\" -d \"jData={\\\"am\\\":\\\"NO\\\",\\\"dq\\\":\\\"0\\\",\\\"es\\\":\\\""+EXC+"\\\",\\\"mp\\\":\\\"0\\\",\\\"pc\\\":\\\""+PRODUCT+"\\\",\\\"pf\\\":\\\"N\\\",\\\"pr\\\":\\\""+PRIC+"\\\",\\\"pt\\\":\\\""+PR_TYP+"\\\",\\\"qt\\\":\\\""+QTY+"\\\",\\\"rt\\\":\\\"DAY\\\",\\\"tp\\\":\\\""+TRG_PRI+"\\\",\\\"ts\\\":\\\""+TRD_SYM+"\\\",\\\"tt\\\":\\\""+TRA_TYP+"\\\"}\"  "+OUT+"","",0);
+ShellExecute("Curl.exe","-X POST \""+NEO_ORD_URL+""+SER_ID+"\" -H \"accept: application/json\" -H \"Auth: "+SES_TOK+"\" -H \"Sid: "+SES_ID+"\" -H \"neo-fin-key: "+NEO_KEY+"\"  -H \"Content-Type: application/x-www-form-urlencoded\" -H \"Authorization: Bearer "+ACS_TOK+"\" -d \"jData={\\\"am\\\":\\\"NO\\\",\\\"dq\\\":\\\"0\\\",\\\"es\\\":\\\""+EXC+"\\\",\\\"mp\\\":\\\"0\\\",\\\"pc\\\":\\\""+PRODUCT+"\\\",\\\"pf\\\":\\\"N\\\",\\\"pr\\\":\\\""+PRIC+"\\\",\\\"pt\\\":\\\""+PR_TYP+"\\\",\\\"qt\\\":\\\""+QTY+"\\\",\\\"rt\\\":\\\"DAY\\\",\\\"tp\\\":\\\""+TRG_PRI+"\\\",\\\"ts\\\":\\\""+TRD_SYM+"\\\",\\\"tt\\\":\\\""+TRA_TYP+"\\\"}\"  "+OUT+"","",0);
 return;
 }
 
@@ -136,18 +123,18 @@ CHANNELID = ParamStr("Channel ID","");
 */
 
 
-NEOACSTOK1 = StaticVarGetText("NEOACSTOK"+USERNUM1);
-NEOSESTOK1 = StaticVarGetText("NEOSESTOK"+USERNUM1);
-NEOSESID1 = StaticVarGetText("NEOSESID"+USERNUM1);
-NEOSERID1 = StaticVarGetText("NEOSERVERID"+USERNUM1);
+NEOACSTOK1 = StaticVarGetText("NEOACSTOK"+"1");//"1" - User Number
+NEOSESTOK1 = StaticVarGetText("NEOSESTOK"+"1");//"1" - User Number
+NEOSESID1 = StaticVarGetText("NEOSESID"+"1");//"1" - User Number
+NEOSERID1 = StaticVarGetText("NEOSERVERID"+"1");//"1" - User Number
 
-OUTRESP1 = WriteIf(EnOrdNo,"-o "+OUTPATH+"\\"+Name()+USERNUM1+".txt","");
-SESSIONOK = NEOACSTOK1 != "" AND NEOSESTOK1 != "" ;
+NEOOUTRESP1 = WriteIf(EnOrdNo,"-o "+OUTPATH+"\\"+Name()+"1"+".txt","");//"1" - User Number
+NEOSESSIONOK1 = NEOACSTOK1 != "" AND NEOSESTOK1 != "" ;
 
 
 EQNAME = StrReplace(Name(),"&","%26")+EQSUF;
 
-//Quantity------------------------------------------
+//Entry Exit Calculations------------------------------------------
 NDO = TimeFrameGetPrice("O",inDaily);
 QTY = ""+LastValue(round(TDVAL/NDO));
 
@@ -169,7 +156,7 @@ EXCSEG = "nse_cm";//nse_cm, bse_cm, nse_fo, bse_fo, cde_fo, mcx_fo
 //Buy
 if (LastValue(Buy) AND Nz(StaticVarGet(SName+"INUPTRADE")) == 0 AND Nz(StaticVarGet(SName+"UPExitTime")) != TZ)
 {
-if(EnAlgo  AND SESSIONOK) KotakOrder("B",EQNAME,QTY,"0","0","MKT","MIS",EXCSEG,NEOSERID1,NEOSESID1,NEOACSTOK1,NEOSESTOK1,NEO_ORD_URL,NEO_KEY,OUTRESP1);
+if(EnAlgo  AND NEOSESSIONOK1) KotakOrder("B",EQNAME,QTY,"0","0","MKT","MIS",EXCSEG,NEOSERID1,NEOSESID1,NEOACSTOK1,NEOSESTOK1,NEOOUTRESP1);
 StaticVarSet(SName+"INUPTRADE",1);
 StaticVarSet(SName+"UPENTRY",CZ);
 _TRACE(BuyMessage);
@@ -183,7 +170,7 @@ UPPNL = CZ - UPENTRY;
 //Sell
 if (LastValue(Sell)  AND StaticVarGet(SName+"INUPTRADE"))
 {
-if(EnAlgo  AND SESSIONOK) KotakOrder("S",EQNAME,QTY,"0","0","MKT","MIS",EXCSEG,NEOSERID1,NEOSESID1,NEOACSTOK1,NEOSESTOK1,NEO_ORD_URL,NEO_KEY,OUTRESP1);
+if(EnAlgo AND NEOSESSIONOK1) KotakOrder("S",EQNAME,QTY,"0","0","MKT","MIS",EXCSEG,NEOSERID1,NEOSESID1,NEOACSTOK1,NEOSESTOK1,NEOOUTRESP1);
 StaticVarSet(SName+"INUPTRADE",0);
 StaticVarSet(SName+"UNENTRY",0);
 StaticVarSet(SName+"UPExitTime",TZ);
@@ -195,7 +182,7 @@ _TRACE(SellMessage);
 //Short
 if (LastValue(Short) AND Nz(StaticVarGet(SName+"INDNTRADE")) == 0  AND Nz(StaticVarGet(SName+"DNExitTime")) != TZ)
 {
-if(EnAlgo   AND SESSIONOK) KotakOrder("S",EQNAME,QTY,"0","0","MKT","MIS",EXCSEG,NEOSERID1,NEOSESID1,NEOACSTOK1,NEOSESTOK1,NEO_ORD_URL,NEO_KEY,OUTRESP1);
+if(EnAlgo  AND NEOSESSIONOK1) KotakOrder("S",EQNAME,QTY,"0","0","MKT","MIS",EXCSEG,NEOSERID1,NEOSESID1,NEOACSTOK1,NEOSESTOK1,NEOOUTRESP1);
 StaticVarSet(SName+"INDNTRADE",1);
 StaticVarSet(SName+"DNENTRY",CZ);
 _TRACE(ShortMessage);
@@ -209,7 +196,7 @@ DNPNL = CZ - DNENTRY;
 //Cover
 if (LastValue(Cover)  AND StaticVarGet(SName+"INDNTRADE"))
 {
-if(EnAlgo   AND SESSIONOK) KotakOrder("B",EQNAME,QTY,"0","0","MKT","MIS",EXCSEG,NEOSERID1,NEOSESID1,NEOACSTOK1,NEOSESTOK1,NEO_ORD_URL,NEO_KEY,OUTRESP1);
+if(EnAlgo  AND NEOSESSIONOK1) KotakOrder("B",EQNAME,QTY,"0","0","MKT","MIS",EXCSEG,NEOSERID1,NEOSESID1,NEOACSTOK1,NEOSESTOK1,NEOOUTRESP1);
 StaticVarSet(SName+"INDNTRADE",0);
 StaticVarSet(SName+"DNENTRY",0);
 StaticVarSet(SName+"DNExitTime",TZ);
@@ -231,7 +218,7 @@ StaticVarSet(SName+"DNExitTime", 0);
 
 
 //Dashboard-----------------------------------------------------
-BoardColor = IIf(StaticVarGet(SName+"INUPTRADE"),colorPaleGreen, IIf(StaticVarGet(SName+"INDNTRADE"),colorPink, IIf(EnAlgo  AND SESSIONOK, colorYellow, colorWhite)));
+BoardColor = IIf(StaticVarGet(SName+"INUPTRADE"),colorPaleGreen, IIf(StaticVarGet(SName+"INDNTRADE"),colorPink, IIf(EnAlgo  AND NEOSESSIONOK1, colorYellow, colorWhite)));
 GfxSetBkColor(BoardColor);
 GfxSelectSolidBrush(BoardColor);
 GfxRoundRect(PX*1, PY*10, PX*25, PY*18,PX,PX);
@@ -252,4 +239,4 @@ else
 GfxTextOut(Name()+" Qty "+QTY+" TO "+TDVAL, PX*2, PY*11);
 }
 
-if(EnAlgo AND !SESSIONOK)GfxTextOut("Not Logged In", PX*2, PY*15); 
+if(EnAlgo AND !NEOSESSIONOK1)GfxTextOut("Not Logged In", PX*2, PY*15); 
