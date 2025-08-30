@@ -1,6 +1,5 @@
 OneMinuteFeed (*.*)|*.*|OneMinuteFeed.format
 TickDataFeed (*.*)|*.*|TickDataFeed.format
-TickAuxFeed (*.*)|*.*|TickAuxFeed.format
 Default ASCII (*.*)|*.*|default.format
 Yahoo's CSV (*.csv)|*.csv|yahoo.format
 AmiQuote Historical (*.aqh)|*.aqh|aqh.format
