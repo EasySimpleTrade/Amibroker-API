@@ -1,11 +1,9 @@
 # Format definition file generated automatically
 # by AmiBroker's ASCII Import Wizard
-$FORMAT Ticker, Date_DMY, Time, Close, Volume, OpenInt
+$FORMAT Ticker, Date_DMY, Time, Close, Volume, OpenInt, Aux1, Aux2
 $SKIPLINES 1
 $SEPARATOR ,
 $CONT 1
-$GROUP 255
 $AUTOADD 1
 #$DEBUG 1
-
-
+#$GROUP 255
