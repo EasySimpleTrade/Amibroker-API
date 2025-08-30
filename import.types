@@ -1,5 +1,6 @@
 OneMinuteFeed (*.*)|*.*|OneMinuteFeed.format
 TickDataFeed (*.*)|*.*|TickDataFeed.format
+SymInfo (*.*)|*.*|SymInfo.format
 Default ASCII (*.*)|*.*|default.format
 Yahoo's CSV (*.csv)|*.csv|yahoo.format
 AmiQuote Historical (*.aqh)|*.aqh|aqh.format
@@ -22,3 +23,4 @@ Short Daily CSV (*.csv)|*.csv|daily.format
 MST Format w/Ticker (*.mst)|*.mst|mst.format
 StockWatch.com format (*.csv)|*.csv|stockwatch.format
 TenBagger format (*.stk)|*.stk|stk.format
+
