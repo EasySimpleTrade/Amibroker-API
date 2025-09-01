@@ -29,7 +29,7 @@ base_url = 'https://api.shoonya.com/NorenWClientTP/'
 historical_ep = 'TPSeries'
 
 
-#num_of_days = 7
+#num_of_days = 0
 #batch_size = 20
 num_of_days = int(sys.argv[1])
 batch_size = int(sys.argv[2])
@@ -76,7 +76,7 @@ async def hist_data_single(session, base_url, end_point, user_id, jkey, symbol, 
         "token": token,
         "st": str(startdate),
         "et": str(enddate),
-        "intrv": time_frame
+        "intrv": '1'
     }
     payload = f'jData={json.dumps(jdata)}&jKey={jkey}'
 
@@ -170,7 +170,7 @@ async def hist_data_list(base_url, end_point, user_id, jkey, master_list,
                     session, base_url, end_point, user_id, jkey,
                     row['Symbol'], row['Exchange'], row['Token'],
                     startdate, enddate, output_dir,
-                    do_import=do_import, do_delete=do_delete
+                    do_import='Yes', do_delete='Yes'
                 )
                 tasks.append(task)
 
@@ -198,6 +198,6 @@ print(f"JKey: {jkey}")
 
 print(pc_time())
 print(start_date , "-", end_date)
-asyncio.run(hist_data_list(base_url, historical_ep, user_id, jkey, master_list, startdate, enddate, output_dir, do_import=do_import, do_delete=do_delete))
+asyncio.run(hist_data_list(base_url, historical_ep, user_id, jkey, master_list, startdate, enddate, output_dir, do_import='Yes', do_delete='Yes'))
 print(pc_time())
 input("Press Enter to exit...")
