@@ -1,0 +1,202 @@
+
+/*
+VALLAKKOTTAI MURUGAN THUNAI
+Easy Simple Trading Solutions
+Telegram @easysimpletrade
+Website https://easysimpletrade.blogspot.com
+Youtube https://www.youtube.com/@easysimpletrade
+GitHub https://github.com/EasySimpleTrade
+*/
+
+RequestTimedRefresh(1,False);
+GfxSetOverlayMode(2);
+
+_SECTION_BEGIN("Flattrade Scrip Master");
+RESPPATH = ParamStr("Path to Response Files","R:\\");
+DATAPATH = ParamStr("Path to  Data Files","C:\\API\\Scripts\\");
+NESUFFIX = ParamStr("Suffix for NSE Equity Symbols", "");
+FUSUFFIX = ParamStr("Suffix for Futures Symbols", "-I");
+DFEED = ParamList("Data Feed", "EST|Amifeed|EqualSolutions",0);
+BROSYM = ParamList("Broker Symbol Format","yes|no",1);
+_SECTION_END();
+
+_SECTION_BEGIN("NSE Equity");
+IMPORTNE = ParamList("NSE Equity Import SymInfo","yes|no",0);
+_SECTION_END();
+
+_SECTION_BEGIN("NSE Futures");
+IMPORTSF = ParamList("Stock Futures Import SymInfo","yes|no",0);
+iEXPDATEME = ParamDate("Monthly Exp Date",Now(1),2);
+EXPDATEME = DateTimeFormat("%d",iEXPDATEME)+"-"+DateTimeFormat("%b",iEXPDATEME)+"-"+DateTimeFormat("%Y",iEXPDATEME);
+_SECTION_END();
+
+_SECTION_BEGIN("NIFTY");
+ //Nifty Options
+iEXPDATEN5 = ParamDate("Nifty Options Exp Date",Now(1),2);
+EXPDATEN5 = DateTimeFormat("%d",iEXPDATEN5)+"-"+DateTimeFormat("%b",iEXPDATEN5)+"-"+DateTimeFormat("%Y",iEXPDATEN5);
+STRIKEMINN5 = Param("Nifty from Strike",21000,1,100000);
+STRIKEMAXN5 = Param("Nifty to Strike",27000,1,100000);
+ISWKYN5 = ParamToggle( "Nifty Expry Weekly|Monthly", "Monthly|Weekly",0);
+ISWKYN5 = ""+ISWKYN5;
+FUTURESN5 = ParamList("Nifty Futures Token","yes|no",0);
+OPTIONSN5 = ParamList("Nifty Options Token","yes|no",0);
+IMPORTN5 = ParamList("Nifty Import SymInfo","yes|no",0);
+_SECTION_END();
+
+_SECTION_BEGIN("BANKNIFTY");
+ //Bank Nifty Options
+
+STRIKEMINBN = Param("BankNifty from Strike",40000,1,100000);
+STRIKEMAXBN = Param("BankNifty to Strike",60000,1,100000);
+FUTURESBN = ParamList("BankNifty Futures Token","yes|no",0);
+OPTIONSBN = ParamList("BankNifty Options Token","yes|no",0);
+IMPORTBN = ParamList("BankNifty Import SymInfo","yes|no",0);
+_SECTION_END();
+
+
+_SECTION_BEGIN("SENSEX");
+ //Sensex Options
+iEXPDATESX = ParamDate("Sensex Options Exp Date",Now(1),2);
+EXPDATESX = DateTimeFormat("%d",iEXPDATESX)+"-"+DateTimeFormat("%b",iEXPDATESX)+"-"+DateTimeFormat("%Y",iEXPDATESX);
+iEXPDATEMSX = ParamDate("Sensex Futures Exp Date",Now(1),2);
+EXPDATEMSX = DateTimeFormat("%d",iEXPDATEMSX)+"-"+DateTimeFormat("%b",iEXPDATEMSX)+"-"+DateTimeFormat("%Y",iEXPDATEMSX);
+STRIKEMINSX = Param("Sensex from Strike",70000,1,100000);
+STRIKEMAXSX = Param("Sensex to Strike",90000,1,100000);
+FUTURESSX = ParamList("Sensex Futures Token","yes|no",0);
+OPTIONSSX = ParamList("Sensex Options Token","yes|no",0);
+IMPORTSX = ParamList("Sensex Import SymInfo","yes|no",0);
+_SECTION_END();
+
+
+_SECTION_BEGIN("Single FNO");
+//Single FNO
+FNONAME = Paramstr("Single FNO Name","USDINR");
+iEXPDATESI = ParamDate("Single FNO Options Exp Date",Now(1),2);
+EXPDATESI = DateTimeFormat("%d",iEXPDATESI)+"-"+DateTimeFormat("%b",iEXPDATESI)+"-"+DateTimeFormat("%Y",iEXPDATESI);
+iEXPDATEMSI = ParamDate("Single FNO Monthly Exp Date",Now(1),2);
+EXPDATEMSI = DateTimeFormat("%d",iEXPDATEMSI)+"-"+DateTimeFormat("%b",iEXPDATEMSI)+"-"+DateTimeFormat("%Y",iEXPDATEMSI);
+STRIKEMINSI = Param("Single FNO from Strike",0,1,300000);
+STRIKEMAXSI = Param("Single FNO to Strike",100000,1,200000);
+LINKFILELISTSI = ParamList("Single FNO Exch_Seg","Currency_Derivatives|NSE_Equity|Nfo_Equity_Derivatives|Nfo_Index_Derivatives|BSE_Equity|Nfo_Equity_Derivatives|Bfo_Index_Derivatives|Commodity",0);
+FUTURESSI = ParamList("Single FNO Futures Token","yes|no",0);
+OPTIONSSI = ParamList("Single FNO Options Token","yes|no",0);
+IMPORTSI = ParamList("Single FNO Import SymInfo","yes|no",0);
+MARKETIDSI = Param("Single FNO Market ID",1,0,100);
+GROUPIDSI = Param("Single FNO Group ID",6,0,100);
+_SECTION_END();
+
+_SECTION_BEGIN("MCX");
+//MCX
+MCXNAME = ParamList("MCX Name","GOLD|GOLDM|GOLDPETAL|SILVER|SLVERM|SILVERMIC|CRUDEOIL|CRUDEOILM|NATURALGAS");
+iEXPDATEMX = ParamDate("MCX Options Exp Date",Now(1),2);
+EXPDATEMX = DateTimeFormat("%d",iEXPDATEMX)+"-"+DateTimeFormat("%b",iEXPDATEMX)+"-"+DateTimeFormat("%Y",iEXPDATEMX);
+iEXPDATEMMX = ParamDate("MCX Futures Exp Date",Now(1),2);
+EXPDATEMMX = DateTimeFormat("%d",iEXPDATEMMX)+"-"+DateTimeFormat("%b",iEXPDATEMMX)+"-"+DateTimeFormat("%Y",iEXPDATEMMX);
+STRIKEMINMX = Param("MCX from Strike",0,1,500000);
+STRIKEMAXMX = Param("MCX to Strike",100000,1,1000000);
+FUTURESMX = ParamList("MCX Futures Token","yes|no",0);
+OPTIONSMX = ParamList("MCX Options Token","yes|no",0);
+IMPORTMX = ParamList("MCX Import SymInfo","yes|no",0);
+_SECTION_END();
+
+
+
+FTMSCRIPT = DATAPATH+"Flattrade Scrip Master.py";
+
+JOINSCRIPT = DATAPATH+"Flattrade Join Masters.py";
+
+
+
+
+//Button
+HX = Param("Button Horizontal Position",0,0,164);
+HY = Param("Button Vertical Position",0,0,89);
+
+PX = 10;//round(Status("pxwidth")/164);
+PY = 10;//round(Status("pxheight")/89);
+
+GuiButton( "NSE Equity", 1,  PX*2+PX*HX, PY*4+PY*HY, PX*7, PY*3, notifyClicked );
+GuiButton( "NSE Futures", 2,  PX*10+PX*HX, PY*4+PY*HY, PX*7, PY*3, notifyClicked );
+
+GuiButton( "N50 FnO", 3,  PX*18+PX*HX, PY*4+PY*HY, PX*7, PY*3, notifyClicked );
+GuiButton( "BNF FnO", 4,  PX*26+PX*HX, PY*4+PY*HY, PX*7, PY*3, notifyClicked );
+GuiButton( "SEN FnO", 5,  PX*34+PX*HX, PY*4+PY*HY, PX*7, PY*3, notifyClicked );
+
+GuiButton( "Single FnO", 6,  PX*42+PX*HX, PY*4+PY*HY, PX*7, PY*3, notifyClicked );
+GuiButton( "MCX FnO", 7,  PX*50+PX*HX, PY*4+PY*HY, PX*7, PY*3, notifyClicked );
+
+GuiButton( "Stock FnO", 8,  PX*58+PX*HX, PY*4+PY*HY, PX*7, PY*3, notifyClicked );
+GuiButton( "Join Files",21,  PX*72+PX*HX, PY*4+PY*HY, PX*7, PY*3, notifyClicked );
+
+GuiSetColors( 1, 20, 2, colorBlack, colorYellow, colorGold,-1,colorGold );
+GuiSetColors( 21, 21, 2, colorBlack, colorLime,colorGreen,-1,colorGreen);
+
+
+
+GUIEVEID = GuiGetEvent( 0, 0 );
+GUIEVENT = GuiGetEvent( 0, 1 );
+
+//sym_type,sym_name,sym_list,link_segment,option_expiry,future_expiry,strikemin,strikemax,weekly,future_suffix,Futures,Options,datafeed,do_import,equity_suffix,market_id,group_id,broker_symbol
+
+ //NSE Equity
+if(GUIEVEID == 1 AND GUIEVENT == 1 )
+{
+ShellExecute(FTMSCRIPT," \"\" \"\" \"NSEEquity\" \"NSE_Equity\" \"\" \"\" \"0\" \"0\" \"0\" \""+NESUFFIX+"\" \"yes\" \"no\" \"\" \""+IMPORTSF+"\" \"\" \"1\" \"1\" \""+BROSYM+"\" ","",1);
+}
+
+
+ //NSE Futures
+if(GUIEVEID == 2 AND GUIEVENT == 1 )
+{
+ShellExecute(FTMSCRIPT," \"\" \"\" \"NSEEquityFutures\" \"Nfo_Equity_Derivatives\" \"\" \""+EXPDATEME+"\" \"0\" \"0\" \"0\" \""+FUSUFFIX+"\" \"yes\" \"no\" \""+DFEED+"\" \""+IMPORTSF+"\" \"\" \"1\" \"2\" \""+BROSYM+"\" ","",1);
+}
+
+//NIFTY Options
+if(GUIEVEID == 3 AND GUIEVENT == 1 )
+{
+ShellExecute(FTMSCRIPT," \"1\" \"NIFTY\" \"\" \"Nfo_Index_Derivatives\" \""+EXPDATEN5+"\" \""+EXPDATEME+"\" \""+STRIKEMINN5+"\" \""+STRIKEMAXN5+"\" \""+ISWKYN5+"\" \""+FUSUFFIX+"\" \""+FUTURESN5+"\" \""+OPTIONSN5+"\" \""+DFEED+"\" \""+IMPORTN5+"\" \"\" \"1\" \"2\" \""+BROSYM+"\" ","",1);
+}
+
+//Banknifty Options
+if(GUIEVEID == 4 AND GUIEVENT == 1 )
+{
+ShellExecute(FTMSCRIPT," \"1\" \"BANKNIFTY\" \"\" \"Nfo_Index_Derivatives\" \""+EXPDATEME+"\" \""+EXPDATEME+"\" \""+STRIKEMINBN+"\" \""+STRIKEMAXBN+"\" \"0\" \""+FUSUFFIX+"\" \""+FUTURESBN+"\" \""+OPTIONSBN+"\" \""+DFEED+"\" \""+IMPORTBN+"\" \"\" \"1\" \"2\" \""+BROSYM+"\" ","",1);
+}
+
+//Sensex F&O Options
+if(GUIEVEID == 5 AND GUIEVENT == 1 )
+{
+ShellExecute(FTMSCRIPT," \"1\" \"SENSEX\" \"\" \"Bfo_Index_Derivatives\" \""+EXPDATESX+"\" \""+EXPDATEMSX+"\" \""+STRIKEMINSX+"\" \""+STRIKEMAXSX+"\" \"1\" \""+FUSUFFIX+"\" \""+FUTURESSX+"\" \""+OPTIONSSX+"\" \""+DFEED+"\" \""+IMPORTSX+"\" \"\" \"2\" \"4\" \""+BROSYM+"\" ","",1);
+}
+
+//Single FnO Options
+if(GUIEVEID == 6 AND GUIEVENT == 1 )
+{
+ShellExecute(FTMSCRIPT," \"1\" \""+FNONAME+"\" \"\" \""+LINKFILELISTSI+"\" \""+EXPDATESI+"\" \""+EXPDATEMSI+"\" \""+STRIKEMINSI+"\" \""+STRIKEMAXSI+"\" \"0\" \""+FUSUFFIX+"\" \""+FUTURESSI+"\" \""+OPTIONSSI+"\" \""+DFEED+"\" \""+IMPORTSI+"\" \"\" \""+MARKETIDSI+"\" \""+GROUPIDSI+"\" \""+BROSYM+"\" ","",1);
+}
+
+ //MCX Options
+if(GUIEVEID == 7 AND GUIEVENT == 1 )
+{
+ShellExecute(FTMSCRIPT," \"1\" \""+MCXNAME+"\" \"\" \"Commodity\" \""+EXPDATEMX+"\" \""+EXPDATEMMX+"\" \""+STRIKEMINMX+"\" \""+STRIKEMAXMX+"\" \"0\" \""+FUSUFFIX+"\" \""+FUTURESMX+"\" \""+OPTIONSMX+"\" \""+DFEED+"\" \""+IMPORTMX+"\"  \"\" \"3\" \"5\" \""+BROSYM+"\" ","",1);
+}
+
+ //Stock Options
+if(GUIEVEID == 8 AND GUIEVENT == 1 )
+{
+ShellExecute(FTMSCRIPT," \"\" \"\" \"Options\" \"Nfo_Equity_Derivatives\" \""+EXPDATEME+"\" \""+EXPDATEME+"\" \"0\" \"0\" \"0\" \""+FUSUFFIX+"\" \"no\" \"yes\" \""+DFEED+"\" \""+IMPORTSF+"\" \"\" \"1\" \"2\" \""+BROSYM+"\" ","",1);
+}
+
+ //Join Files
+if(GUIEVEID == 21 AND GUIEVENT == 1 )
+{
+ShellExecute(JOINSCRIPT,"","",1);
+}
+
+
+
+GfxSetBkMode(1);
+GfxSelectFont("Verdhana", 14, 700, False ); 
+GfxSetTextColor(colorBrightGreen);
+GfxTextOut("Flattrade Scrip Master ",PX*2,PY*1.5);
+
