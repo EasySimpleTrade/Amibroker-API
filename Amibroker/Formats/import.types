@@ -1,5 +1,5 @@
-OneMinuteFeed (*.*)|*.*|OneMinuteFeed.format
-TickDataFeed (*.*)|*.*|TickDataFeed.format
+Candle (*.*)|*.*|Candle.format
+Tick (*.*)|*.*|Tick.format
 EOD (*.*)|*.*|EOD.format
 MasterInfo (*.*)|*.*|MasterInfo.format
 Default ASCII (*.*)|*.*|default.format
