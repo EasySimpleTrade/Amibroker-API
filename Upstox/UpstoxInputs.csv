@@ -1,0 +1,13 @@
+Item,Values
+APIKey,14b3fa4-afe2-4a1d-9d25-f1b35583b816
+APISecret,6bbb58f
+Pin,123456
+UserID,123456
+Mobile,9876543210
+TOTPKey,Q6325557TVZVW3EZGT235JDC6LG55OSB
+RedirectURL,https://localhost
+Subscription,full
+AuxField,TBQTSQ
+TelegramChannelID,
+TelegramBotKey,
+BrowserShow,no

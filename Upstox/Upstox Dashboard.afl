@@ -1,0 +1,213 @@
+/*
+VALLAKKOTTAI MURUGAN THUNAI
+Easy Simple Trading Solutions
+Telegram @easysimpletrade
+Website https://easysimpletrade.blogspot.com
+Youtube https://www.youtube.com/@easysimpletrade
+GitHub https://github.com/EasySimpleTrade
+*/
+
+RequestTimedRefresh(1,False);
+GfxSetOverlayMode(2);
+
+_SECTION_BEGIN("Upstox Live Data");
+FEEDSCRIPTNAME = ParamList("Feed Script Name","Upstox Candle Feed|Upstox Tick Feed",0);
+
+_SECTION_BEGIN("Upstox Backfill");
+NUMDAYBF= Param("Number of Days to Backfilll",7,0,750,1);
+PARABF = Param("Number of Parallel Backfill",5,1,50,1);
+
+
+_SECTION_BEGIN("Upstox Historical Data");
+FILETODOHD =  ParamList("Historical Data download Master","MasterUpstox|NIFTYUpstox|BANKNIFTYUpstox|SENSEXUpstox|NSEEquityFuturesUpstox|NSEEquityUpstox|OptionsUpstox|CRUDEOILMUpstox|SILVERMICUpstox|IndexUpstox|GlobalUpstox",0);
+iEXPDATEHDF = ParamDate("Historical Data from",Now(1),2);
+EXPDATEHDF = DateTimeFormat("%d",iEXPDATEHDF)+"-"+StrToUpper( DateTimeFormat("%m",iEXPDATEHDF))+"-"+DateTimeFormat("%Y",iEXPDATEHDF);
+iEXPDATEHDT = ParamDate("Historical DataTo",Now(1),2);
+EXPDATEHDT = DateTimeFormat("%d",iEXPDATEHDT)+"-"+StrToUpper( DateTimeFormat("%m",iEXPDATEHDT))+"-"+DateTimeFormat("%Y",iEXPDATEHDT);
+ENIMPORTDATAHD = ParamList("Import Downloaded Hist Data","Yes|No");
+ENDELETEDATAHD = ParamList("Delete DownladedHist Data","Yes|No");
+TIMEINTERVALHD= Param("Historical Data Time Interval ",1,300,1,1);
+TIMEUNITHD= ParamList("Historical Data Time Unit ","minutes|hours|days|weeks|months",0);
+PARAHD = Param("Number of Parallel Hist Downloads",5,1,50,1);
+
+
+_SECTION_BEGIN("Intra Data");
+FILETODOID =  ParamList("Intra Data download List","MasterUpstox|NIFTYUpstox|BANKNIFTYUpstox|SENSEXUpstox|NSEEquityFuturesUpstox|NSEEquityUpstox|OptionsUpstox|CRUDEOILMUpstox|SILVERMICUpstox|IndexUpstox|GlobalUpstox",0);
+
+ENIMPORTDATAID = ParamList("Import Downloaded Intra Data","Yes|No");
+ENDELETEDATAID = ParamList("Delete Downladed Intra Data","Yes|No");
+PARAID = Param("Number of Parallel Intra Downloads",5,1,50,1);
+
+
+
+_SECTION_BEGIN("Upstox Dashboard");
+RESPPATH = ParamStr("Path to Response Files","R:\\");
+SCRIPTPATH = ParamStr("Path to  Data Files","C:\\API\\Scripts\\");
+USERNUM = Param("User Number",1,1,100,1);
+EnCMD = ParamToggle("Show CMD Window","No|Yes",1);
+
+LOGINFILE1 = RESPPATH+"UpstoxLogin"+USERNUM+".txt";
+LIMITSFILE1 = RESPPATH+"UpstoxLimits"+USERNUM+".txt";
+LOGINSCRIPT1 = SCRIPTPATH+"Upstox Login "+USERNUM+".py";
+LIMITSSCRIPT1 = SCRIPTPATH+"Upstox Limits "+USERNUM+".py";
+FEEDSCRIPT = SCRIPTPATH+FEEDSCRIPTNAME+".py";
+BACKSCRIPT = SCRIPTPATH+"Upstox Backfill.py";
+HISTSCRIPT = SCRIPTPATH+"Upstox HistData.py";
+INTRASCRIPT = SCRIPTPATH+"Upstox INTRAData.py";
+
+
+//Button
+HX = Param("Button Horizontal Position",0,0,164);
+HY = Param("Button Vertical Position",0,0,89);
+
+PX = 10;//round(Status("pxwidth")/164);
+PY = 10;//round(Status("pxheight")/89);
+
+GuiButton( "Login",1,  PX*2+PX*HX, PY*4+PY*HY, PX*7, PY*3, notifyClicked );
+GuiButton( "Live Data",2,  PX*10+PX*HX, PY*4+PY*HY, PX*7, PY*3, notifyClicked );
+GuiButton( "Limits",3,  PX*18+PX*HX, PY*4+PY*HY, PX*7, PY*3, notifyClicked );
+
+GuiButton( "Hist Data",4,  PX*2+PX*HX, PY*8+PY*HY, PX*7, PY*3, notifyClicked );
+GuiButton( "Backfill",5,  PX*10+PX*HX, PY*8+PY*HY, PX*7, PY*3, notifyClicked );
+GuiButton( "Intra Data",6,  PX*18+PX*HX, PY*8+PY*HY, PX*7, PY*3, notifyClicked );
+
+GuiSetColors( 1, 1, 2, colorBlack, colorLime,colorGreen,-1,colorGreen);
+GuiSetColors( 2, 6, 2, colorBlack, colorYellow, colorGold,-1,colorGold );
+
+
+GUIEVEID = GuiGetEvent( 0, 0 );
+GUIEVENT = GuiGetEvent( 0, 1 );
+
+//Login
+if(GUIEVEID == 1 AND GUIEVENT == 1 )
+{
+fdelete(LOGINFILE1);
+fdelete(LIMITSFILE1);
+StaticVarRemove("UPX*");
+ShellExecute(LOGINSCRIPT1,"","",EnCMD);
+}
+
+fh = fopen(LOGINFILE1, "r" );
+LOGSTATS1 = LOGERROR1 = ACSTOK1 = LOGDATE1 = USERID1 = "";
+if( fh )
+ {
+     while( ! feof( fh ) )
+     {         
+         line = fgets( fh );
+         key = StrExtract( line, 0 );              
+         if ( key == "token" )
+         { 
+         ACSTOK1 = StrTrim(StrExtract(line,1),"",2);   
+         }
+         if ( key == "date" )
+         { 
+         LOGDATE1 = StrTrim(StrExtract(line,1),"",2);     
+         }
+         if ( key == "user" )
+         { 
+         USERID1 = StrTrim(StrExtract(line,1),"",2);            
+         }
+     }
+     fclose( fh );
+ }
+ 
+ 
+NOWDATE = DateTimeFormat( "%d", Now(5) ); 
+
+if(StaticVarGetText("UPXTOKEN"+USERNUM) == "" AND LOGDATE1 == NOWDATE  AND ACSTOK1 != "")
+{
+_TRACE("Setting Upstox Session "+USERNUM);
+//StaticVarSetText("UPXUSERID"+USERNUM,USERID1);
+StaticVarSetText("UPXTOKEN"+USERNUM,ACSTOK1);
+ShellExecute(LIMITSSCRIPT1," \""+StaticVarGetText("UPXUSERID"+USERNUM)+"\" \""+StaticVarGetText("UPXTOKEN"+USERNUM)+"\" ","",EnCMD);
+}
+
+ //DataFeed
+if(GUIEVEID == 2 AND GUIEVENT == 1 )
+{
+ShellExecute(FEEDSCRIPT,"","",1);
+}
+
+//Limits
+if(GUIEVEID == 3 AND GUIEVENT == 1  AND StaticVarGetText("UPXTOKEN"+USERNUM) != "" )
+{
+ShellExecute(LIMITSSCRIPT1," \""+StaticVarGetText("UPXTOKEN"+USERNUM)+"\" ","",EnCMD);
+}
+
+
+fh = fopen( LIMITSFILE1, "r" );
+
+LIMSTATS1 = LIMCASH1 = LIMERROR1 = "";
+if( fh )
+ {
+     while( ! feof( fh ) )
+     {         
+         line = fgets( fh );
+         key = StrExtract( line, 0 );               
+         if ( key == "status" )
+         { 
+         LIMSTATS1 = StrTrim(StrExtract(line,1),"",2);    
+         }
+         /*if ( key == "emsg" )
+         { 
+         LIMERROR1 = StrTrim(StrExtract(line,1),"",2);
+            
+         }*/
+         if ( key == "available_to_trade total" )
+         { 
+         LIMCASH1 = StrTrim(StrExtract(line,1),"",2);     
+         }
+     }
+     fclose( fh );
+ } 
+ 
+
+
+ /*
+start_date = '17-08-2026'
+end_date = '17-08-2026'
+do_import = 'no'
+do_delete = 'no'
+master_file = 'CRUDEOILUpstox' #IndexUpstox MasterUpstox CRUDEOILUpstox
+time_frame = '1'
+unit = 'minutes'
+batch_size = 25
+*/
+ //HistData
+if(GUIEVEID == 4 AND GUIEVENT == 1 )
+{
+ShellExecute(HISTSCRIPT," \""+EXPDATEHDF+"\" \""+EXPDATEHDT+"\" \""+ENIMPORTDATAHD+"\" \""+ENDELETEDATAHD+"\" \""+FILETODOHD+"\" \""+TIMEINTERVALHD+"\" \""+TIMEUNITHD+"\" \""+PARAHD+"\"","",1);
+}
+
+ //Backfill
+if(GUIEVEID == 5 AND GUIEVENT == 1 )
+{
+ShellExecute(BACKSCRIPT," \""+NUMDAYBF+"\" \""+PARABF+"\" ","",1);
+}
+
+
+ //INTRA Data
+if(GUIEVEID == 6 AND GUIEVENT == 1 )
+{
+ShellExecute(INTRASCRIPT," \"\" \"\" \""+ENIMPORTDATAID+"\" \""+ENDELETEDATAID+"\" \""+FILETODOID+"\"  \""+PARAID+"\"","",1);
+}
+
+
+ 
+ //GFX  
+GfxSetBkMode(1);
+GfxSelectFont("Verdhana", 14, 700, False ); 
+GfxSetTextColor(colorBrightGreen);
+GfxTextOut("Upstox",PX*2,PY*1.5);
+ 
+
+StatusLogin1 = WriteIf(LOGDATE1 != NOWDATE, "Please Login",  WriteIf(ACSTOK1 == "", "Token not found", USERID1+" "+"Login Succesfull"));
+
+ColorLogin1 = IIf(StatusLogin1 == USERID1+" "+"Login Succesfull",colorBrightGreen,colorRed);
+GfxSetTextColor(ColorLogin1);
+
+StatusLimit1 = WriteIf(LIMSTATS1 == "success" AND LOGDATE1 == NOWDATE,"Cash "+ LIMCASH1,"Get Limits");
+
+GfxTextOut(StatusLogin1+"          "+StatusLimit1,PX*30+PX*HX,PY*4.5+PY*HY);
+
+
