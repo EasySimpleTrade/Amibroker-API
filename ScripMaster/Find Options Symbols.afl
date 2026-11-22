@@ -1,0 +1,34 @@
+/*
+VALLAKKOTTAI MURUGAN THUNAI
+Easy Simple Trading Solutions
+Telegram @easysimpletrade
+Website https://easysimpletrade.blogspot.com
+Youtube https://www.youtube.com/@easysimpletrade
+*/
+
+WLNO = Param("Watchlist Number",10,0,64,1);
+OPTFIX = ParamList("Options suffix", "|-I|-II|-III",1);
+
+OPTFIXLEN =  StrLen(OPTFIX);
+
+LASTTWO = StrRight(Name(),2+OPTFIXLEN);
+
+LASTTWOCP = LASTTWO == "CE"+OPTFIX OR LASTTWO == "PE"+OPTFIX ;
+
+LASTTHIRD = StrMid(Name(),StrLen(Name())-(OPTFIXLEN+3),1); 
+
+LASTTHIRDNUM = LASTTHIRD == "0" OR LASTTHIRD == "1" OR LASTTHIRD == "2" OR LASTTHIRD == "3" OR LASTTHIRD == "4" OR LASTTHIRD == "5" OR LASTTHIRD == "6" OR LASTTHIRD == "7" OR LASTTHIRD == "8" OR LASTTHIRD == "9";
+
+ADDTOWL = LASTTWOCP AND LASTTHIRDNUM;
+
+if(ADDTOWL) CategoryAddSymbol(Name(),categoryWatchlist,WLNO);
+
+Filter = ADDTOWL;
+
+AddTextColumn(LASTTWO,"Last Two",1);
+AddTextColumn(LASTTHIRD,"Last Third",1);
+AddColumn(LASTTHIRDNUM,"Last Third Num",1); 
+AddColumn(LASTTWOCP,"Last Two CP",1);
+AddColumn(OPTFIXLEN,"Optfix Len");
+//X = StrToNum("X");
+//printf("x"+X);

@@ -1,0 +1,67 @@
+/*
+VALLAKKOTTAI MURUGAN THUNAI
+Easy Simple Trading Solutions
+Telegram @easysimpletrade
+Website https://easysimpletrade.blogspot.com
+Youtube https://www.youtube.com/@easysimpletrade
+*/
+
+#pragma maxthreads 1
+
+
+LISTPATH = "C:\\API\\Files\\OptionsList.csv";
+
+
+NSTRK = Param("Number of Strke from ATM",10,0,1000,1);
+//STRDIF = GetFnData("PointValue");
+STRDIF = GetFnDataForeign("PointValue",Name()+"-I");
+ATM = round(C/STRDIF)*STRDIF;
+
+STRKMIN = ATM - NSTRK*STRDIF;
+STRKMAX = ATM + NSTRK*STRDIF;
+
+if(Status( "action" ) == actionExplore)
+
+{
+if (  Status( "stocknum" ) == 0 )
+{
+fdelete(LISTPATH);
+//fdelete("C:\\Users\\Administrator\\OptionsList.csv");
+//fh = fopen("C:\\Users\\Administrator\\OptionsList.csv", "w");
+//fputs( "Symbol,StrikeMin,StrikeMax\n", fh );
+//fclose( fh );
+}
+}
+
+
+if(Status( "action" ) == actionScan)
+
+{
+//fmkdir( OPDIR+":\\"+ OPFOL);
+fh = fopen( LISTPATH, "a");
+//fputs( "Symbol,StrikeMin,StrikeMax\n", fh );
+//fh = fopen( "C:\\Users\\Administrator\\OptionsList.csv", "a");
+if( fh )
+{
+fputs( StrReplace(Name(),"-I","") +","+STRKMIN+","+STRKMAX+ "\n", fh );
+fclose( fh );
+}
+}
+
+SetForeign(Name()+"-I"); 
+FUTNAM = Name();
+LOTSIZE = RoundLotSize;
+CF=C;
+RestorePriceArrays();
+
+Filter = 1;
+SetOption( "NoDefaultColumns", True );
+AddTextColumn( Name(), "Ticker", 1, colorDefault,colorDefault);
+Addcolumn(C,"C",1);
+//Addcolumn(LOTSIZE,"LotSize",1);
+//AddColumn(MarginDeposit,"Margin",1);
+AddColumn(STRDIF,"Str Diff",1.1);
+AddColumn(STRKMIN,"Str MIN",1.1);
+AddColumn(STRKMAX,"Str MIN",1.1);
+AddColumn(ATM,"ATM",1.1);
+//Addtextcolumn(FUTNAM,"FNAME",1);
