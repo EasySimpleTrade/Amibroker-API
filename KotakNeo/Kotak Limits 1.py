@@ -10,25 +10,44 @@ GitHub https://github.com/EasySimpleTrade
 import csv
 import requests
 import sys
+import time
 
 #Inputs
 login_file = r'R:\KotakLogin1.txt'
 limits_file = r'R:\KotakLimits1.txt'
 
+'''
+#Read CSV as Dictonary
+def read_csv_dict(file_path):
+    data_dict = {}
+    with open(file_path, mode='r') as file:
+        reader = csv.reader(file)
+        for row in reader:
+            if not row:
+                continue
+            key, value = row
+            data_dict[key] = value
+    return data_dict
 
-access_token = sys.argv[1]
-session_token = sys.argv[2]
-sid = sys.argv[3]
-hs_server_id = sys.argv[4]
+login_dict = read_csv_dict(login_file)
+session_token = login_dict['token']
+sid = login_dict['sid']
+baseurl = login_dict['baseurl']
 
-print(f"Access Token: {access_token}")
-print(f"Session Token: {session_token}")
+'''
+session_token = sys.argv[1]
+sid = sys.argv[2]
+baseurl = sys.argv[3]
+
+
+print(f"Access Token: {session_token}")
 print(f"SID: {sid}")
-print(f"HS Server ID: {hs_server_id}")
+print(f"Base URL: {baseurl}")
+
 
 neo_fin_key = 'neotradeapi'
-segment = 'CASH'
-exchange = 'NSE'
+segment = 'ALL'
+exchange = 'ALL'
 product = 'ALL'
 
 api_headers = {
@@ -36,8 +55,7 @@ api_headers = {
     'Sid': sid,
     'Auth': session_token,
     'neo-fin-key': neo_fin_key,
-    'Content-Type': 'application/x-www-form-urlencoded',
-    'Authorization': f'Bearer {access_token}'
+    'Content-Type': 'application/x-www-form-urlencoded'
 }
 
 
@@ -46,7 +64,7 @@ limits_data = {
 }
 
 
-limits_response = requests.post(f'https://gw-napi.kotaksecurities.com/Orders/2.0/quick/user/limits?sId={hs_server_id}', headers=api_headers, data=limits_data)
+limits_response = requests.post(f'{baseurl}/quick/user/limits', headers=api_headers, data=limits_data)
 
 # Check if the response is OK (status code 200)
 if limits_response.status_code == 200:
@@ -66,3 +84,4 @@ else:
     print(f"Error Message: {limits_response.text}")
     input("Press Enter to exit...")
 
+time.sleep(2)
