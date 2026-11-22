@@ -12,8 +12,11 @@ GfxSetOverlayMode(2);
 
 _SECTION_BEGIN("Kotak Dashboard");
 RESPPATH = ParamStr("Path to Response Files","R:\\");
-DATAPATH = ParamStr("Path to  Data Files","C:\\API\\");
+DATAPATH = ParamStr("Path to  Data Files","C:\\API\\Scripts\\");
 USERNUM = Param("User Number",1,1,100,1);
+EnCMD = ParamToggle("Show CMD Window","No|Yes",1);
+HX = Param("Button Horizontal Position",0,0,164);
+HY = Param("Button Vertical Position",0,0,89);
 _SECTION_END();
 
 LOGINFILE1 = RESPPATH+"KotakLogin"+USERNUM+".txt";
@@ -22,8 +25,6 @@ LOGINSCRIPT1 = DATAPATH+"Kotak Login "+USERNUM+".py";
 LIMITSSCRIPT1 = DATAPATH+"Kotak Limits "+USERNUM+".py";
 
 //Button
-HX = Param("Button Horizontal Position",0,0,164);
-HY = Param("Button Vertical Position",0,0,89);
 
 PX = 10;//round(Status("pxwidth")/164);
 PY = 10;//round(Status("pxheight")/89);
@@ -43,33 +44,29 @@ if(GUIEVEID == 1 AND GUIEVENT == 1 )
 fdelete(LOGINFILE1);
 fdelete(LIMITSFILE1);
 StaticVarRemove("NEO*");
-ShellExecute(LOGINSCRIPT1,"","",1);
+ShellExecute(LOGINSCRIPT1,"","",EnCMD);
 }
 
 
 fh = fopen( LOGINFILE1, "r" );
-ACSTOK1 = SESTOK1 = SESID1 = SERVERID1 = LOGDATE1 = USERID1 = "";
+ACSTOK1 = SESID1 = BASEURL1 = LOGDATE1 = USERID1 = "";
 if( fh )
  {
      while( ! feof( fh ) )
      {         
          line = fgets( fh );
          key = StrExtract( line, 0 );         
-         if ( key == "access" )
+         if ( key == "token" )
          { 
          ACSTOK1 = StrTrim(StrExtract(line,1),"",2);   
          }        
-         if ( key == "session" )
-         { 
-         SESTOK1 = StrTrim(StrExtract(line,1),"",2); 
-         }
          if ( key == "sid" )
          { 
          SESID1 = StrTrim(StrExtract(line,1),"",2);    
          }
-         if ( key == "hsServerId" )
+         if ( key == "baseurl" )
          { 
-         SERVERID1 = StrTrim(StrExtract(line,1),"",2);    
+         BASEURL1 = StrTrim(StrExtract(line,1),"",2);    
          }
          if ( key == "date" )
          { 
@@ -77,7 +74,8 @@ if( fh )
          }
          if ( key == "user" )
          { 
-         USERID1 = StrTrim(StrExtract(line,1),"",2);            
+         USERID1 = StrTrim(StrExtract(line,1),"",2);
+         printf(USERID1);            
          }
      }
      fclose( fh );
@@ -85,22 +83,22 @@ if( fh )
  
 NOWDATE = DateTimeFormat( "%d", Now(5) ); 
 
-
+printf(USERID1);
 
 if(StaticVarGetText("NEOACSTOK"+USERNUM) == "" AND LOGDATE1 == NOWDATE AND StaticVarGetText("NEOACSTOK"+USERNUM) == "" AND ACSTOK1 != "")
 {
 _TRACE("Setting Kotak Session "+USERNUM);
 StaticVarSetText("NEOACSTOK"+USERNUM,ACSTOK1);
-StaticVarSetText("NEOSESTOK"+USERNUM,SESTOK1);
 StaticVarSetText("NEOSESID"+USERNUM,SESID1);
-StaticVarSetText("NEOSERVERID"+USERNUM,SERVERID1);
-ShellExecute(LIMITSSCRIPT1," \""+StaticVarGetText("NEOACSTOK"+USERNUM)+"\" \""+StaticVarGetText("NEOSESTOK"+USERNUM)+"\" \""+StaticVarGetText("NEOSESID"+USERNUM)+"\" \""+StaticVarGetText("NEOSERVERID"+USERNUM)+"\" ","",1);
+StaticVarSetText("NEOBASEURL"+USERNUM,BASEURL1);
+ShellExecute(LIMITSSCRIPT1," \""+StaticVarGetText("NEOACSTOK"+USERNUM)+"\" \""+StaticVarGetText("NEOSESID"+USERNUM)+"\" \""+StaticVarGetText("NEOBASEURL"+USERNUM)+"\" ","",EnCMD);
 StaticVarSet("NEOSTATIC"+USERNUM,0);
 }
 
-if(GUIEVEID == 2 AND GUIEVENT == 1  AND StaticVarGetText("GWCTOKEN"+USERNUM) != "")
+if(GUIEVEID == 2 AND GUIEVENT == 1  AND StaticVarGetText("NEOACSTOK"+USERNUM) != "")
 {
-ShellExecute(LIMITSSCRIPT1," \""+StaticVarGetText("NEOACSTOK"+USERNUM)+"\" \""+StaticVarGetText("NEOSESTOK"+USERNUM)+"\" \""+StaticVarGetText("NEOSESID"+USERNUM)+"\" \""+StaticVarGetText("NEOSERVERID"+USERNUM)+"\" ","",1);
+fdelete(LIMITSFILE1);
+ShellExecute(LIMITSSCRIPT1," \""+StaticVarGetText("NEOACSTOK"+USERNUM)+"\" \""+StaticVarGetText("NEOSESID"+USERNUM)+"\" \""+StaticVarGetText("NEOBASEURL"+USERNUM)+"\" ","",EnCMD);
 }
 
 fh = fopen( LIMITSFILE1, "r" );
@@ -130,13 +128,11 @@ GfxSelectFont("Verdhana", 14, 700, False );
 GfxSetTextColor(colorBrightGreen);
 GfxTextOut("Kotak",PX*2,PY*1.5);
 
-StatusLogin1= WriteIf(LOGDATE1 != NOWDATE, "Please Login", WriteIf(StaticVarGetText("NEOACSTOK"+USERNUM) == "", "Session Not Set", "Login Succesfull"));
+StatusLogin1= WriteIf(LOGDATE1 != NOWDATE, "Please Login", WriteIf(StaticVarGetText("NEOACSTOK"+USERNUM) == "", "Session Not Set", USERID1+" "+"Login Succesfull"));
 
-ColorLogin1 = IIf(StatusLogin1 == "Login Succesfull",colorBrightGreen,colorRed);
+ColorLogin1 = IIf(StatusLogin1 == USERID1+" "+"Login Succesfull",colorBrightGreen,colorRed);
 GfxSetTextColor(ColorLogin1);
 
-StatusLimit1 = WriteIf(LIMCASH1 != "" AND LIMSTATS1 == "Ok" AND LOGDATE1 == NOWDATE,"Cash "+ LIMCASH1,"Get Limits");
+StatusLimit1 = WriteIf(LIMSTATS1 != "Ok","", WriteIf(LIMSTATS1 == "Ok" AND LOGDATE1 == NOWDATE,"Cash "+ LIMCASH1,"Get Limits"));
 
-GfxTextOut(USERID1+" "+StatusLogin1+"          "+StatusLimit1,PX*30+PX*HX,PY*4.5+PY*HY);
-
-_SECTION_END();
+GfxTextOut(StatusLogin1+"          "+StatusLimit1,PX*30+PX*HX,PY*4.5+PY*HY);
