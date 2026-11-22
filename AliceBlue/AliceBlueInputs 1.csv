@@ -1,0 +1,12 @@
+Item,Values
+UserID,AB123456
+Password,Pass@word
+AppCode,abcdefgh
+AppSecret,c1e871aa6bbb58f284ddaaafe2682f1b35583b81614b3fa4
+TOTPKey,Q6325557TVZVW3EZGT235JDC6LG55OSB
+RedirectURL,http://localhost
+Subscription,tick
+AuxField,TBQTSQ
+TelegramChannelID,
+TelegramBotKey,
+BrowserShow,no
