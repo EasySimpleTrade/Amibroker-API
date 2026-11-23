@@ -22,11 +22,12 @@ import ssl
 import certifi
 
 #Inputs
-master_list = r'C:\API\ScripMaster.csv'
+master_list = r'C:\API\Files\ScripMaster.csv'
 login_file = r'R:\ShoonyaLogin1.txt'
 output_dir = r'R:'
-base_url = 'https://api.shoonya.com/NorenWClientTP/'
+base_url = 'https://api.shoonya.com/NorenWClientAPI/'
 historical_ep = 'TPSeries'
+format_file = 'Candle'
 
 
 #num_of_days = 0
@@ -104,7 +105,7 @@ async def hist_data_single(session, base_url, end_point, user_id, jkey, symbol, 
                                     record['inth'],  # High
                                     record['intl'],  # Low
                                     record['intc'],  # Close
-                                    record['intv'],  # Volume
+                                    max(0, float(record['intv'])),  # Volume
                                     record['oi']     # OI
                                 ])
                         except AttributeError as e:
@@ -121,7 +122,7 @@ async def hist_data_single(session, base_url, end_point, user_id, jkey, symbol, 
                     if do_import == 'Yes':
                         try:
                             AB = win32com.client.Dispatch("Broker.Application")
-                            AB.Import(0, output_file, "OneMinuteFeed.format")
+                            AB.Import(0, output_file, f"{format_file}.format")
                         except Exception as e:
                             print(f"Error during import for {symbol}: {str(e)}")
 
@@ -191,7 +192,7 @@ enddate = epoch(end_date, '23:59:59')
 
 login_dict = read_csv_dict(login_file)
 user_id = login_dict['user']
-jkey = login_dict['susertoken']
+jkey = login_dict['token']
 
 print(f"User ID: {user_id}")
 print(f"JKey: {jkey}")
