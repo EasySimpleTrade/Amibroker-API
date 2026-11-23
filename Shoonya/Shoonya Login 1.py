@@ -1,93 +1,197 @@
-'''
-VALLAKKOTTAI MURUGAN THUNAI
-Easy Simple Trading Solutions
-Telegram @easysimpletradeupdates
-Website https://easysimpletrade.blogspot.com
-Youtube https://www.youtube.com/@easysimpletrade
-GitHub https://github.com/EasySimpleTrade
-'''
-
+import csv
 import hashlib
 import json
-import requests
-from pyotp import TOTP
+import time
 from datetime import datetime
-import csv
+from urllib.parse import urlparse, parse_qs
 
-# Inputs
-user_id = 'FA12345' #User Id
-password = 'Pass@123' #Password
-totpkey = '446556TGXHY47TOQV5E67EFA63WV6FI2' #TOTP Key
-vendor_code = 'FA12345_U' #Vendor Code
-api_secret = '775c015925197a4982241bd61159d207' #API Secret
-imei = 'abc1234' #IMEI
+import pyotp
+import requests
+from playwright.sync_api import sync_playwright
 
-#Write Dictionary to CSV
+# ==========================================
+# CONFIGURATION & FILE PATHS
+# ==========================================
+LOGIN_FILE = r"R:\ShoonyaLogin1.txt"
+INPUTS_FILE = r"C:\API\Files\ShoonyaInputs 1.csv"
+TOKEN_URL = "https://api.shoonya.com/NorenWClientAPI/GenAcsTok"
+
+#HEADLESS = False
+CODE_WAIT_SECS = 60
+
+FIELDS = "input:visible:not([type='hidden']):not([type='checkbox']):not([type='radio'])"
+LOGIN_BTN = "xpath=//button[normalize-space()='LOGIN']"
+
+
+# ==========================================
+# COMMON UTILITY FUNCTIONS
+# ==========================================
+
+#Read CSV as Dictonary
+def read_csv_dict(file_path):
+    data_dict = {}
+    with open(file_path, mode='r') as file:
+        reader = csv.reader(file)
+        for row in reader:
+            if not row:
+                continue
+            key, value = row
+            data_dict[key] = value
+    return data_dict
+
+
 def dict_to_csv(dictionary, out_file):
-    with open(out_file, mode='w', newline='') as file:
-        writer = csv.writer(file)
+    """Writes a dictionary to a key,value CSV file."""
+    with open(out_file, mode="w", newline="") as f:
+        writer = csv.writer(f)
         for key, value in dictionary.items():
             writer.writerow([key, value])
 
-act_id = user_id
-login_file = r"R:\ShoonyaLogin1.txt" # Change Path if Required
-base_url = "https://api.shoonya.com/NorenWClientTP/"
-login_ep = "QuickAuth"
 
-def login(userid, password, totpkey, vendor_code, api_secret, imei, login_file):
-    url = f"{base_url}{login_ep}"
+def get_safe_totp(totp_secret, wait_margin=55):
+    """Waits out the last seconds of the minute, then returns a fresh TOTP."""
+    while True:
+        sec = datetime.now().second
+        if sec < wait_margin:
+            break
+        print(f"Current second = {sec} -> waiting for fresh TOTP window...")
+        time.sleep(1)
 
-    pwd_hashed = hashlib.sha256(password.encode('utf-8')).hexdigest()
-    u_app_key = f'{userid}|{api_secret}'
-    app_key_hashed = hashlib.sha256(u_app_key.encode('utf-8')).hexdigest()
+    code = pyotp.TOTP(totp_secret).now()
+    print("Generated Safe TOTP:", code)
+    return code
 
-    otp = TOTP(totpkey).now().zfill(6)
-    
-    values = {
-        "apkversion": "1.0.0",
-        "uid": userid,
-        "pwd": pwd_hashed,
-        "factor2": otp,
-        "vc": vendor_code,
-        "appkey": app_key_hashed,
-        "imei": imei,
-        "source": "API"
-    }
 
-    payload = 'jData=' + json.dumps(values)
-    #print(f"Request Payload: {payload}")
+def wait_for_capture(page, captured, timeout):
+    """Waits (using Playwright's wait so events fire) until a URL is captured."""
+    start = time.time()
+    while not captured["url"]:
+        if time.time() - start > timeout:
+            raise TimeoutError(f"Timed out waiting for code. Last page URL: {page.url}")
+        page.wait_for_timeout(200)
+    return captured["url"]
 
+
+# ==========================================
+# SHOONYA-SPECIFIC FUNCTIONS
+# ==========================================
+
+def start_shoonya_capture(page):
+    """
+    Captures the first URL containing code= and 'shoonya'. Watches requests,
+    navigations and redirect Location headers, so the code is caught even if
+    the final page ("access only for API users") does not show it.
+    """
+    captured = {"url": None}
+
+    def check(url):
+        if url and "code=" in url and "shoonya" in url.lower() and not captured["url"]:
+            captured["url"] = url
+
+    def on_response(response):
+        check(response.url)
+        try:
+            check(response.headers.get("location"))
+        except Exception:
+            pass
+
+    page.context.on("request", lambda r: check(r.url))
+    page.context.on("response", on_response)
+    page.on("framenavigated", lambda f: check(f.url))
+    return captured
+
+
+def submit_credentials(page, inputs, otp):
+    """Fills user id, password, OTP and clicks LOGIN."""
+    fields = page.locator(FIELDS)
+    fields.nth(0).fill(inputs["UserID"])
+    fields.nth(1).fill(inputs["Password"])
+    fields.nth(2).fill(otp)
+    page.locator(LOGIN_BTN).click()
+
+
+def get_auth_code(page, inputs):
+    """Shoonya browser login. Retries once with a fresh OTP only if the login form is still showing."""
+    user_id = inputs["UserID"]
+    client_id = user_id + "_U"
+    login_url = (f"https://trade.shoonya.com/OAuthlogin/investor-entry-level/login"
+                 f"?api_key={client_id}&route_to={user_id}")
+
+    captured = start_shoonya_capture(page)
+    page.goto(login_url, wait_until="domcontentloaded")
+    page.wait_for_selector("input[type='password']", timeout=30000)
+    page.wait_for_timeout(1000)
+
+    url = None
+    for attempt in (1, 2):
+        submit_credentials(page, inputs, get_safe_totp(inputs["TOTPKey"]))
+        print(f"Credentials submitted (attempt {attempt}). Capturing auth code...")
+        try:
+            url = wait_for_capture(page, captured, CODE_WAIT_SECS)
+            break
+        except TimeoutError as e:
+            print(e)
+            # If the login form is gone we are on another page; retrying would not help.
+            if attempt == 2 or page.locator(LOGIN_BTN).count() == 0:
+                raise Exception(f"Could not capture auth code. Page URL: {page.url}")
+            print("Login form still showing, retrying with a fresh OTP...")
+
+    print("Captured URL:", url)
+    code = parse_qs(urlparse(url).query).get("code", [None])[0]
+    if not code:
+        raise Exception(f"No code found in URL: {url}")
+    return code
+
+
+def generate_access_token(auth_code, inputs):
+    """Exchanges auth code for the Shoonya session token and saves it."""
+    user_id = inputs["UserID"]
+    client_id = user_id + "_U"
+    checksum = hashlib.sha256((client_id + inputs["APISecret"] + auth_code).encode()).hexdigest()
+
+    payload = "jData=" + json.dumps({"code": auth_code, "checksum": checksum, "uid": user_id})
+    response = requests.post(
+        TOKEN_URL, data=payload,
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
+        timeout=10,
+    )
+    print("Raw Response:", response.text)
+    res = response.json()
+
+    if "access_token" not in res:
+        raise Exception(f"Token generation failed: {res}")
+
+    emsg = res.get("emsg", "")
+    dict_to_csv({
+        "token": res.get("susertoken", ""),
+        "stat": res.get("stat", ""),
+        "emsg": emsg,
+        "dmsg": emsg,
+        "date": datetime.now().strftime("%d"),
+        "user": user_id,
+    }, LOGIN_FILE)
+    print(f"Logged in successfully, response saved to {LOGIN_FILE}")
+
+
+# ==========================================
+# MAIN
+# ==========================================
+
+if __name__ == "__main__":
     try:
+        inputs = read_csv_dict(INPUTS_FILE)
 
-        response = requests.post(url, data=payload)
-
-        if response.status_code == 200:
-            response_data = response.json()
-            susertoken = response_data.get("susertoken", "")
-            stat = response_data.get("stat", "")
-            emsg = response_data.get("emsg", "")
-            dmsg = response_data.get("emsg", "")
-            if dmsg:
-                print(f"Message: {dmsg}")
-
-            if susertoken:
-                today_date = datetime.now().strftime('%d')
-                login_data = {'susertoken':susertoken, 'stat': stat, 'emsg': emsg, 'dmsg': dmsg, 'date': today_date, 'user': user_id}
-                dict_to_csv(login_data, login_file)
-                print(f"Logged In successfully, response saved to {login_file}")
-            
-            else:
-                print(f"Token not found. {response_data.get('emsg', '')}")
-                input("Press Enter to exit...")
-            return susertoken
+        if inputs["BrowserShow"].lower() == 'yes':
+            HEADLESS = False
         else:
-            print(response.text)
-            input("Press Enter to exit...")
-        
+            HEADLESS = True        
 
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=HEADLESS, args=["--window-size=1920,1080"])
+            page = browser.new_context().new_page()
+            auth_code = get_auth_code(page, inputs)
+            browser.close()
+
+        generate_access_token(auth_code, inputs)
     except Exception as e:
-        print(f"Error during login: {e}")
-        input("Press Enter to exit...")
-        return None
-    
-susertoken = login(user_id, password, totpkey, vendor_code, api_secret, imei, login_file) 
+        print(f"An error occurred: {e}")
