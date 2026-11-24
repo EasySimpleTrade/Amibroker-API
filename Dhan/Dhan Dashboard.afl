@@ -1,0 +1,150 @@
+/*
+VALLAKKOTTAI MURUGAN THUNAI
+Easy Simple Trading Solutions
+Telegram @easysimpletradeupdates
+Website https://easysimpletrade.blogspot.com
+Youtube https://www.youtube.com/@easysimpletrade
+GitHub https://github.com/EasySimpleTrade
+*/
+
+RequestTimedRefresh(1,False);
+GfxSetOverlayMode(2);
+
+_SECTION_BEGIN("Dhan Dashboard");
+LOGINAPIKEY = ParamToggle("Login by", "Access Token|API Key",1);
+USERID1 = ParamStr("Client ID", "12345678790");
+ACSTOK1  = ParamStr("Access Token", "");
+
+RESPPATH = ParamStr("Path to Response Files","R:\\");
+DATAPATH = ParamStr("Path to  Data Files","C:\\API\\Scripts\\");
+USERNUM = Param("User Number",1,1,100,1);
+EnCMD = ParamToggle("Show CMD Window","No|Yes",1);
+HX = Param("Button Horizontal Position",0,0,164);
+HY = Param("Button Vertical Position",0,0,89);
+_SECTION_END();
+
+LOGINFILE1 = RESPPATH+"DhanLogin"+USERNUM+".txt";
+LIMITSFILE1 = RESPPATH+"DhanLimits"+USERNUM+".txt";
+LOGINSCRIPT1 = DATAPATH+"Dhan Login "+USERNUM+".py";
+LIMITSSCRIPT1 = DATAPATH+"Dhan Limits "+USERNUM+".py";
+
+//Button
+
+PX = 10;//round(Status("pxwidth")/164);
+PY = 10;//round(Status("pxheight")/89);
+
+GuiButton( "Login", 1,  PX*2+PX*HX, PY*4+PY*HY, PX*7, PY*3, notifyClicked );
+GuiButton( "Limits", 2,  PX*10+PX*HX, PY*4+PY*HY, PX*7, PY*3, notifyClicked );
+GuiSetColors( 1, 1, 2, colorBlack, colorLime,colorGreen,-1,colorGreen);
+GuiSetColors( 2, 2, 2, colorBlack, colorYellow, colorGold,-1,colorGold );
+
+
+GUIEVEID = GuiGetEvent( 0, 0 );
+GUIEVENT = GuiGetEvent( 0, 1 );
+
+//Login
+if(LOGINAPIKEY)
+{
+if(GUIEVEID == 1 AND GUIEVENT == 1 )
+{
+fdelete(LOGINFILE1);
+fdelete(LIMITSFILE1);
+StaticVarRemove("DHN*");
+ShellExecute(LOGINSCRIPT1,"","",EnCMD);
+}
+fh = fopen( LOGINFILE1, "r" );
+ACSTOK1 = SESTOK1 = SESID1 = SERVERID1 = LOGDATE1 = USERID1 = "";
+if( fh )
+ {
+     while( ! feof( fh ) )
+     {         
+         line = fgets( fh );
+         key = StrExtract( line, 0 );         
+         if ( key == "access" )
+         { 
+         ACSTOK1 = StrTrim(StrExtract(line,1),"",2);   
+         }        
+         if ( key == "date" )
+         { 
+         LOGDATE1 = StrTrim(StrExtract(line,1),"",2);           
+         }
+         if ( key == "user" )
+         { 
+         USERID1 = StrTrim(StrExtract(line,1),"",2);            
+         }
+     }
+     fclose( fh );
+ }
+ 
+NOWDATE = DateTimeFormat( "%d", Now(5) ); 
+
+
+if(StaticVarGetText("DHNTOKEN"+USERNUM) == "" AND LOGDATE1 == NOWDATE AND ACSTOK1 != "")
+{
+_TRACE("Setting Dhan Session "+USERNUM);
+StaticVarSetText("DHNUSERID"+USERNUM,USERID1);
+StaticVarSetText("DHNTOKEN"+USERNUM,ACSTOK1);
+ShellExecute(LIMITSSCRIPT1," \""+StaticVarGetText("DHNTOKEN"+USERNUM)+"\" ","",EnCMD);
+}
+}
+else
+{
+if(GUIEVEID == 1 AND GUIEVENT == 1 )
+{
+StaticVarRemove("DHN*");
+StaticVarSetText("DHNUSERID"+USERNUM,USERID1);
+StaticVarSetText("DHNTOKEN"+USERNUM,ACSTOK1);
+}
+}
+
+//Limits
+if(GUIEVEID == 2 AND GUIEVENT == 1  AND StaticVarGetText("DHNTOKEN"+USERNUM) != "")
+{
+fdelete(LIMITSFILE1);
+ShellExecute(LIMITSSCRIPT1," \""+StaticVarGetText("DHNTOKEN"+USERNUM)+"\" ","",EnCMD);
+}
+
+fh = fopen( LIMITSFILE1, "r" );
+
+LIMSTATS1 = LIMCASH1 = "";
+if( fh )
+ {
+     while( ! feof( fh ) )
+     {         
+         line = fgets( fh );
+         key = StrExtract( line, 0 );               
+        if ( key == "availabelBalance" )
+         { 
+         LIMCASH1 = StrTrim(StrExtract(line,1),"",2);     
+         }
+     }
+     fclose( fh );
+ } 
+
+//GFX
+GfxSetBkMode(1);
+GfxSelectFont("Verdhana", 14, 700, False ); 
+GfxSetTextColor(colorBrightGreen);
+GfxTextOut("Dhan",PX*2,PY*1.5);
+
+if(LOGINAPIKEY)
+{
+StatusLogin1= WriteIf(LOGDATE1 != NOWDATE, "Please Login", WriteIf(StaticVarGetText("DHNTOKEN"+USERNUM) == "", "Session Not Set", USERID1+" "+"Login Successfull"));
+
+ColorLogin1 = IIf(StatusLogin1 == USERID1+" "+"Login Successfull",colorBrightGreen,colorRed);
+GfxSetTextColor(ColorLogin1);
+
+StatusLimit1 = WriteIf(LIMCASH1 != "" AND LOGDATE1 == NOWDATE,"Cash "+ LIMCASH1,"Get Limits");
+
+GfxTextOut(StatusLogin1+"          "+StatusLimit1,PX*30+PX*HX,PY*4.5+PY*HY);
+}
+else
+{
+StatusLogin1 = WriteIf(StaticVarGetText("DHNTOKEN"+USERNUM) == "","Please Login",USERID1+" "+"Login Successful");
+
+StatusLimit1 = WriteIf(LIMCASH1 != "" ,"Cash "+ LIMCASH1,"Get Limits");
+ColorLimit1 = IIf(StatusLimit1 == "Get Limits",colorRed,colorBrightGreen);
+
+GfxTextOut(StatusLogin1+"          "+StatusLimit1,PX*30+PX*HX,PY*4.5+PY*HY);
+
+}
