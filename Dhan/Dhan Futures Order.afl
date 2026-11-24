@@ -40,29 +40,21 @@ _SECTION_END();
 //Prefix for Static Variable
 SName = STGTAG+Name()+Interval();
 
-if (StrFind( Name(), "SENSEX" ))
+if (GroupID(0) == 4)
 {
 EXCSEG = "BSE_FNO";
 }
-else if(StrFind( Name(), "BANKNIFTY" ))
+else if(GroupID(0) == 2)
 {
 EXCSEG = "NSE_FNO";
 }
-else if (StrFind( Name(), "NIFTY" ))
-{
-EXCSEG = "NSE_FNO";
-}
-else if (StrFind( Name(), "SILVER" ))
-{
-EXCSEG = "MCX_COMM";
-}
-else if (StrFind( Name(), "GOLD" ))
+else if (GroupID(0) == 5)
 {
 EXCSEG = "MCX_COMM";
 }
 else
 {
-EXCSEG = "NSE_FNO";
+EXCSEG = "";
 }
 
 EXPDATE = DateTimeToStr(GetFnData("DividendPayDate")); 
@@ -156,9 +148,10 @@ DHNOUTRESP1 = WriteIf(EnOrdNo,"-o "+OUTPATH+"\\"+Name()+"1"+".txt","");//"1" - U
 DHNSESSIONOK1 = DHNUID1 != "" AND DHNTOK1 != "" ;
 SYMTOKOK = StrToNum(SYMTOK) > 0;
 EXPDATEOK = EXPDATE != "";
-SYMINFOOK = SYMTOKOK AND EXPDATEOK;
+EXCSEGOK = EXCSEG != "";
+SYMINFOOK = SYMTOKOK AND EXPDATEOK AND EXCSEGOK;
 
-QTY = ""+LOTS * RoundLotSize;
+QTY = ""+LOTS;
 
 //Messages
 BuyMessage = "Buy "+Name()+" "+SYMTOK+" Qty "+QTY+" @ "+CZ;
@@ -255,12 +248,14 @@ GfxTextOut("Entry "+DNENTRY+" PNL "+DNPNL,PX*2, PY*13);
 }
 else
 {
-GfxTextOut(Name()+" Qty "+QTY, PX*2, PY*11);
+GfxTextOut(Name()+" Lots "+QTY, PX*2, PY*11);
+GfxTextOut(WriteIf(SYMTOKOK,"Token "+SYMTOK,"Import Token")+" "+WriteIf(EXCSEGOK,EXCSEG,"Set Exchange"), PX*2, PY*13);
+GfxTextOut(WriteIF(EXPDATEOK,"Expiry "+EXPDATE,"Import Expiry Date"), PX*2, PY*15);
 }
 
 if(EnAlgo AND !DHNSESSIONOK1)GfxTextOut("Not Logged In", PX*2, PY*11); 
-GfxTextOut("Token "+WriteIf(SYMTOKOK,SYMTOK,"Import Token"), PX*2, PY*13);
-GfxTextOut("Expiry "+WriteIF(EXPDATEOK,EXPDATE,"Import Expiry Date"), PX*2, PY*15);
+//GfxTextOut(""+SYMTOK, PX*2, PY*17); 
+
 
 
 
