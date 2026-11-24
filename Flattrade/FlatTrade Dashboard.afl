@@ -10,15 +10,15 @@ GitHub https://github.com/EasySimpleTrade
 RequestTimedRefresh(1,False);
 GfxSetOverlayMode(2);
 
-_SECTION_BEGIN("Flattrade Backfill");
-//Backfill
+_SECTION_BEGIN("FlatTrade LiveData");
+FEEDSCRIPTNAME = ParamList("Feed Script Name","FlatTrade Candle Feed|FlatTrade Tick Feed",0);
+
+_SECTION_BEGIN("FlatTrade Backfill");
 NUMDAYBF= Param("Number of Days to Backfilll",7,0,750,1);
-PARABF = Param("Number of Parallel Backfill",10,1,50,1);
+PARABF = Param("Number of Parallel Backfill",5,1,50,1);
 
-
-_SECTION_BEGIN("Flattrade Historical Data");
-//Historical Data
-FILETODOHD =  Paramstr("Historical Data download Master","ScripMaster");
+_SECTION_BEGIN("FlatTrade Historical Data");
+FILETODOHD =  Paramlist("Historical Data download Master","MasterScrip|NIFTYMaster|BANKNIFTYMaster|SENSEXMaster|NSEEquityFuturesMaster|NSEEquityMaster|OptionsMaster|CRUDEOILMMaster|SILVERMICMaster|IndexMaster|TempMaster",0);
 iEXPDATEHDF = ParamDate("Historical Data from",Now(1),2);
 EXPDATEHDF = DateTimeFormat("%d",iEXPDATEHDF)+"-"+StrToUpper( DateTimeFormat("%m",iEXPDATEHDF))+"-"+DateTimeFormat("%Y",iEXPDATEHDF);
 iEXPDATEHDT = ParamDate("Historical DataTo",Now(1),2);
@@ -26,33 +26,32 @@ EXPDATEHDT = DateTimeFormat("%d",iEXPDATEHDT)+"-"+StrToUpper( DateTimeFormat("%m
 ENIMPORTDATAHD = ParamList("Import Downloaded Hist Data","Yes|No");
 ENDELETEDATAHD = ParamList("Delete DownladedHist Data","Yes|No");
 TIMEFRAMEHD= ParamList("Historical Data TimeFrame ","1|3|5|10|15|30|60|120");
-PARAHD = Param("Number of Parallel Hist Downloads",10,1,50,1);
-
+PARAHD = Param("Number of Parallel Hist Downloads",5,1,50,1);
 
 _SECTION_BEGIN("EOD Data");
 FILETODOED =  Paramstr("EOD Data download List","EODList");
 iEXPDATEEDF = ParamDate("EOD Data from",Now(1),2);
-EXPDATEEDF = DateTimeFormat("%d",iEXPDATEHDF)+"-"+StrToUpper( DateTimeFormat("%m",iEXPDATEHDF))+"-"+DateTimeFormat("%Y",iEXPDATEHDF);
+EXPDATEEDF = DateTimeFormat("%d",iEXPDATEEDF)+"-"+StrToUpper( DateTimeFormat("%m",iEXPDATEEDF))+"-"+DateTimeFormat("%Y",iEXPDATEEDF);
 iEXPDATEEDT = ParamDate("EOD DataTo",Now(1),2);
-EXPDATEEDT = DateTimeFormat("%d",iEXPDATEHDT)+"-"+StrToUpper( DateTimeFormat("%m",iEXPDATEHDT))+"-"+DateTimeFormat("%Y",iEXPDATEHDT);
+EXPDATEEDT = DateTimeFormat("%d",iEXPDATEEDT)+"-"+StrToUpper( DateTimeFormat("%m",iEXPDATEEDT))+"-"+DateTimeFormat("%Y",iEXPDATEEDT);
 ENIMPORTDATAED = ParamList("Import Downloaded EOD Data","Yes|No");
 ENDELETEDATAED = ParamList("Delete Downladed EOD Data","Yes|No");
-PARAED = Param("Number of Parallel EOD Downloads",25,1,50,1);
+PARAED = Param("Number of Parallel EOD Downloads",5,1,50,1);
 
-_SECTION_BEGIN("Flattrade Dashboard");
+_SECTION_BEGIN("FlatTrade Dashboard");
 RESPPATH = ParamStr("Path to Response Files","R:\\");
-DATAPATH = ParamStr("Path to  Data Files","C:\\API\\");
+SCRIPTPATH = ParamStr("Path to  Data Files","C:\\API\\Scripts\\");
 USERNUM = Param("User Number",1,1,100,1);
+EnCMD = ParamToggle("Show CMD Window","No|Yes",1);
 
-LOGINFILE1 = RESPPATH+"FlattradeLogin"+USERNUM+".txt";
-LIMITSFILE1 = RESPPATH+"FlattradeLimits"+USERNUM+".txt";
-LOGINSCRIPT1 = DATAPATH+"Flattrade Login "+USERNUM+".py";
-LIMITSSCRIPT1 = DATAPATH+"Flattrade Limits "+USERNUM+".py";
-FEEDSCRIPT = DATAPATH+"FlatTrade OneMinuteFeed.py";
-BACKSCRIPT = DATAPATH+"FlatTrade Backfill.py";
-HISTSCRIPT = DATAPATH+"FlatTrade HistData.py";
-EODSCRIPT = DATAPATH+"FlatTrade EODData.py";
-
+LOGINFILE1 = RESPPATH+"FlatTradeLogin"+USERNUM+".txt";
+LIMITSFILE1 = RESPPATH+"FlatTradeLimits"+USERNUM+".txt";
+LOGINSCRIPT1 = SCRIPTPATH+"FlatTrade Login "+USERNUM+".py";
+LIMITSSCRIPT1 = SCRIPTPATH+"FlatTrade Limits "+USERNUM+".py";
+FEEDSCRIPT = SCRIPTPATH+FEEDSCRIPTNAME+".py";
+BACKSCRIPT = SCRIPTPATH+"FlatTrade Backfill.py";
+HISTSCRIPT = SCRIPTPATH+"FlatTrade HistData.py";
+EODSCRIPT = SCRIPTPATH+"FlatTrade EODData.py";
 
 //Button
 HX = Param("Button Horizontal Position",0,0,164);
@@ -61,22 +60,19 @@ HY = Param("Button Vertical Position",0,0,89);
 PX = 10;//round(Status("pxwidth")/164);
 PY = 10;//round(Status("pxheight")/89);
 
-GuiButton( "Login", 1,  PX*2+PX*HX, PY*4+PY*HY, PX*7, PY*3, notifyClicked );
-GuiButton( "Limits", 2,  PX*10+PX*HX, PY*4+PY*HY, PX*7, PY*3, notifyClicked );
-GuiButton( "Start Feed",3,  PX*2+PX*HX, PY*8+PY*HY, PX*7, PY*3, notifyClicked );
-GuiButton( "Backfill",4,  PX*10+PX*HX, PY*8+PY*HY, PX*7, PY*3, notifyClicked );
-GuiButton( "Hist Data",5,  PX*2+PX*HX, PY*12+PY*HY, PX*7, PY*3, notifyClicked );
-GuiButton( "EOD Data",6,  PX*10+PX*HX, PY*12+PY*HY, PX*7, PY*3, notifyClicked );
+GuiButton( "Login",1,  PX*2+PX*HX, PY*4+PY*HY, PX*7, PY*3, notifyClicked );
+GuiButton( "Live Data",2,  PX*10+PX*HX, PY*4+PY*HY, PX*7, PY*3, notifyClicked );
+GuiButton( "Limits",3,  PX*18+PX*HX, PY*4+PY*HY, PX*7, PY*3, notifyClicked );
+
+GuiButton( "Hist Data",4,  PX*2+PX*HX, PY*8+PY*HY, PX*7, PY*3, notifyClicked );
+GuiButton( "Backfill",5,  PX*10+PX*HX, PY*8+PY*HY, PX*7, PY*3, notifyClicked );
+GuiButton( "EOD Data",6,  PX*18+PX*HX, PY*8+PY*HY, PX*7, PY*3, notifyClicked );
 
 GuiSetColors( 1, 1, 2, colorBlack, colorLime,colorGreen,-1,colorGreen);
 GuiSetColors( 2, 6, 2, colorBlack, colorYellow, colorGold,-1,colorGold );
 
-
 GUIEVEID = GuiGetEvent( 0, 0 );
 GUIEVENT = GuiGetEvent( 0, 1 );
-
-
-
 
 //Login
 if(GUIEVEID == 1 AND GUIEVENT == 1 )
@@ -84,10 +80,8 @@ if(GUIEVEID == 1 AND GUIEVENT == 1 )
 fdelete(LOGINFILE1);
 fdelete(LIMITSFILE1);
 StaticVarRemove("FLA*");
-ShellExecute(LOGINSCRIPT1,"","",1);
+ShellExecute(LOGINSCRIPT1,"","",EnCMD);
 }
-
-
 
 fh = fopen(LOGINFILE1, "r" );
 LOGSTATS1 = LOGERROR1 = ACSTOK1 = LOGDATE1 = USERID1 = "";
@@ -120,24 +114,27 @@ if( fh )
      fclose( fh );
  }
  
- 
 NOWDATE = DateTimeFormat( "%d", Now(5) ); 
-
-
 
 if(StaticVarGetText("FLATOKEN"+USERNUM) == "" AND LOGSTATS1 == "Ok" AND LOGDATE1 == NOWDATE  AND ACSTOK1 != "")
 {
 _TRACE("Setting FlatTrade Session "+USERNUM);
 StaticVarSetText("FLAUSERID"+USERNUM,USERID1);
 StaticVarSetText("FLATOKEN"+USERNUM,ACSTOK1);
-ShellExecute(LIMITSSCRIPT1," \""+StaticVarGetText("FLAUSERID"+USERNUM)+"\" \""+StaticVarGetText("FLATOKEN"+USERNUM)+"\" ","",1);
+ShellExecute(LIMITSSCRIPT1," \""+StaticVarGetText("FLAUSERID"+USERNUM)+"\" \""+StaticVarGetText("FLATOKEN"+USERNUM)+"\" ","",EnCMD);
 }
 
-if(GUIEVEID == 2 AND GUIEVENT == 1  AND StaticVarGetText("FLATOKEN"+USERNUM) != "" )
+ //DataFeed
+if(GUIEVEID == 2 AND GUIEVENT == 1 )
 {
-ShellExecute(LIMITSSCRIPT1," \""+StaticVarGetText("FLAUSERID"+USERNUM)+"\" \""+StaticVarGetText("FLATOKEN"+USERNUM)+"\" ","",1);
+ShellExecute(FEEDSCRIPT,"","",1);
 }
 
+//Limits
+if(GUIEVEID == 3 AND GUIEVENT == 1  AND StaticVarGetText("FLATOKEN"+USERNUM) != "" )
+{
+ShellExecute(LIMITSSCRIPT1," \""+StaticVarGetText("FLAUSERID"+USERNUM)+"\" \""+StaticVarGetText("FLATOKEN"+USERNUM)+"\" ","",EnCMD);
+}
 
 fh = fopen( LIMITSFILE1, "r" );
 
@@ -164,42 +161,16 @@ if( fh )
      fclose( fh );
  } 
  
- //DataFeed
-if(GUIEVEID == 3 AND GUIEVENT == 1 )
-{
-ShellExecute(FEEDSCRIPT,"","",1);
-}
-
- //Backfill
- NUMDAYBF= ""+NUMDAYBF;
- PARABF = ""+PARABF;
+ //HistData
 if(GUIEVEID == 4 AND GUIEVENT == 1 )
 {
-ShellExecute(BACKSCRIPT," \""+NUMDAYBF+"\" \""+PARABF+"\" ","",1);
+ShellExecute(HISTSCRIPT," \""+EXPDATEHDF+"\" \""+EXPDATEHDT+"\" \""+ENIMPORTDATAHD+"\" \""+ENDELETEDATAHD+"\" \""+FILETODOHD+"\" \""+TIMEFRAMEHD+"\" \""+PARAHD+"\"","",1);
 }
  
- //GFX  
-GfxSetBkMode(1);
-GfxSelectFont("Verdhana", 14, 700, False ); 
-GfxSetTextColor(colorBrightGreen);
-GfxTextOut("Flattrade",PX*2,PY*1.5);
- 
-
-StatusLogin1 = WriteIf(LOGDATE1 != NOWDATE, "Please Login",  WriteIf(LOGERROR1 != "", LOGERROR1, WriteIf(LOGSTATS1 != "Ok", "Login Error", "Login Succesfull")));
-
-ColorLogin1 = IIf(StatusLogin1 == "Login Succesfull",colorBrightGreen,colorRed);
-GfxSetTextColor(ColorLogin1);
-
-StatusLimit1 = WriteIf(LIMSTATS1 != "Ok",LIMERROR1, WriteIf(LIMSTATS1 == "Ok" AND LOGDATE1 == NOWDATE,"Cash "+ LIMCASH1,"Get Limits"));
-
-GfxTextOut(USERID1+" "+StatusLogin1+"          "+StatusLimit1,PX*30+PX*HX,PY*4.5+PY*HY);
- 
-
-
- //HistData
+ //Backfill
 if(GUIEVEID == 5 AND GUIEVENT == 1 )
 {
-ShellExecute(HISTSCRIPT," \""+EXPDATEHDF+"\" \""+EXPDATEHDT+"\" \""+ENIMPORTDATAHD+"\" \""+ENDELETEDATAHD+"\" \""+FILETODOHD+"\" \""+TIMEFRAMEHD+"\" \""+PARAHD+"\"","",1);
+ShellExecute(BACKSCRIPT," \""+NUMDAYBF+"\" \""+PARABF+"\" ","",1);
 }
 
  //EOD Data
@@ -207,3 +178,18 @@ if(GUIEVEID == 6 AND GUIEVENT == 1 )
 {
 ShellExecute(EODSCRIPT," \""+EXPDATEEDF+"\" \""+EXPDATEEDT+"\" \""+ENIMPORTDATAED+"\" \""+ENDELETEDATAED+"\" \""+FILETODOED+"\"  \""+PARAED+"\"","",1);
 }
+ 
+ //GFX  
+GfxSetBkMode(1);
+GfxSelectFont("Verdhana", 14, 700, False ); 
+GfxSetTextColor(colorBrightGreen);
+GfxTextOut("FlatTrade",PX*2,PY*1.5);
+ 
+StatusLogin1 = WriteIf(LOGDATE1 != NOWDATE, "Please Login",  WriteIf(LOGERROR1 != "", LOGERROR1, WriteIf(LOGSTATS1 != "Ok", "Login Error", USERID1+" "+"Login Succesfull")));
+
+ColorLogin1 = IIf(StatusLogin1 == USERID1+" "+"Login Succesfull",colorBrightGreen,colorRed);
+GfxSetTextColor(ColorLogin1);
+
+StatusLimit1 = WriteIf(LIMSTATS1 != "Ok",LIMERROR1, WriteIf(LIMSTATS1 == "Ok" AND LOGDATE1 == NOWDATE,"Cash "+ LIMCASH1,"Get Limits"));
+
+GfxTextOut(StatusLogin1+"          "+StatusLimit1,PX*30+PX*HX,PY*4.5+PY*HY);
