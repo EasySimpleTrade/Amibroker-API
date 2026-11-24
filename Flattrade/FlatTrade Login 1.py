@@ -15,16 +15,33 @@ import csv
 from datetime import datetime
 
 #Inputs
-user_id = "FT123456" #Change your Username
-pass_word = "Pass@word" #Change Password
-totp_key = "Q6325557TVZVW3EZGT235JDC6LG55OSB" #Change TOTP Key
-api_key = "0804531d1997a74a4784e686ed97457e" #Change API Key
-api_secret = "2025.c1e871aa6bbb58f284ddaaafe2682f1b35583b81614b3fa4" #Change API Secret
-act_id = user_id
-
-login_file = r"R:\FlattradeLogin1.txt" #Check drive letter 
+login_file = r"R:\FlattradeLogin1.txt" #Change path as per your requiremnt 
 auth_url = "https://auth.flattrade.in"
 authapi_url = "https://authapi.flattrade.in"
+inputs_file = r'C:\API\Files\FlatTradeInputs 1.csv'
+
+
+#Read CSV as Dictonary
+def read_csv_dict(file_path):
+    data_dict = {}
+    with open(file_path, mode='r') as file:
+        reader = csv.reader(file)
+        for row in reader:
+            if not row:
+                continue
+            key, value = row
+            data_dict[key] = value
+    return data_dict
+
+
+inputs_dict = read_csv_dict(inputs_file)
+
+user_id = inputs_dict['UserID']
+pass_word = inputs_dict['Password']
+totp_key = inputs_dict['TOTPKey']
+api_key = inputs_dict['APIKey']
+api_secret =  inputs_dict['APISecret']
+act_id = user_id
 
 def sha_256(item):
     return hashlib.sha256(item.encode()).hexdigest()
