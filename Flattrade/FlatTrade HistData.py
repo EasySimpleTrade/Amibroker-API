@@ -13,33 +13,34 @@ import asyncio
 import aiohttp
 import json
 from datetime import datetime, timezone, timedelta
-import nest_asyncio
 import csv
 import os
 import win32com.client
 import sys
-import ssl
-import certifi
 
 
 #Inputs
 login_file = r'R:\FlattradeLogin1.txt'
-output_dir = r'C:\HistoricalData'
-base_url = 'https://piconnect.flattrade.in/PiConnectTP/'
+output_dir = r'C:\API\HistoricalData'
+base_url = 'https://piconnect.flattrade.in/PiConnectAPI/'
 historical_ep = 'TPSeries'
+format_file = 'Candle'
+
+# Max seconds to wait for ONE request. If the server does not answer in this time,
+# the request is cancelled and retried, instead of hanging forever.
+# Increase this if you download a very large date range with 1-minute data.
+REQUEST_TIMEOUT = 120
 
 
-#start_date = datetime.today().strftime('%d-%m-%Y')
-#end_date = datetime.today().strftime('%d-%m-%Y')
-"""
-start_date = '02-05-2025'
-end_date = '02-05-2025'
+'''
+start_date = '02-05-2025' #datetime.today().strftime('%d-%m-%Y')
+end_date = '02-05-2025' #datetime.today().strftime('%d-%m-%Y')
 do_import = 'No'
 do_delete = 'Yes'
-master_file = 'NiftyToken'
+master_file = 'Temp'
 time_frame = '1'
 batch_size = 25
-"""
+'''
 start_date = sys.argv[1]
 end_date = sys.argv[2]
 do_import = sys.argv[3]
@@ -57,13 +58,21 @@ print("time_frame="+time_frame)
 print("batch_size="+str(batch_size))
 
 
-master_list = fr'C:\API\{master_file}.csv'
+master_list = fr'C:\API\Files\{master_file}.csv'
 
+# Set to True when the broker says the session/token has expired.
+# Remaining symbols are skipped so you can login again and re-run.
+session_expired = False
+
+
+#Read CSV as Dictonary
 def read_csv_dict(file_path):
     data_dict = {}
     with open(file_path, mode='r') as file:
         reader = csv.reader(file)
         for row in reader:
+            if not row:
+                continue
             key, value = row
             data_dict[key] = value
     return data_dict
@@ -76,8 +85,9 @@ def pc_time():
 #Timestamp to IST
 def epoch_to_ist(unix_timestamp):
     utc_time = datetime.fromtimestamp(int(unix_timestamp), tz=timezone.utc)
-    ist_time = utc_time.astimezone(timezone(timedelta(hours=5, minutes=30)))
-    return ist_time.strftime('%d-%m-%Y %H:%M:%S')
+    return utc_time.astimezone(
+        timezone(timedelta(hours=5, minutes=30))
+    )
 
 #Date,Time to UnixTime Stamp
 def epoch(date, time):
@@ -86,9 +96,20 @@ def epoch(date, time):
 
 
 
+# ======================================================================
+# BROKER SPECIFIC PART (for other brokers, change this function:
+# URL / payload format / response field names / error handling)
+# ======================================================================
 async def hist_data_single(session, base_url, end_point, user_id, jkey, symbol, exchange, token,
-                           startdate, enddate, output_dir, retries=5, delay=2,
+                           startdate, enddate, output_dir, time_frame, format_file,
+                           retries=5, delay=2,
                            do_import='Yes', do_delete='Yes'):
+    global session_expired
+
+    # Session already expired in an earlier symbol, no need to call the server again
+    if session_expired:
+        return
+
     url = f"{base_url}{end_point}"
     RETRYABLE_STATUSES = {400, 524, 500, 502, 503}
 
@@ -102,11 +123,9 @@ async def hist_data_single(session, base_url, end_point, user_id, jkey, symbol, 
     }
     payload = f'jData={json.dumps(jdata)}&jKey={jkey}'
 
-    ssl_context = ssl.create_default_context(cafile=certifi.where())
-
     for attempt in range(retries):
         try:
-            async with session.post(url, data=payload, ssl=ssl_context) as response:
+            async with session.post(url, data=payload) as response:
                 if response.status == 200:
                     data = await response.json()
 
@@ -114,19 +133,29 @@ async def hist_data_single(session, base_url, end_point, user_id, jkey, symbol, 
                         print(f"Error: Data for {symbol} returned as a string, no retry needed.")
                         return
 
+                    # Error / no-data reply comes as a dict, e.g. {"stat":"Not_Ok","emsg":"..."}
+                    if isinstance(data, dict):
+                        emsg = data.get('emsg', str(data))
+                        print(f"Error: {symbol} {token}: {emsg}")
+                        if 'session' in str(emsg).lower():
+                            session_expired = True
+                        return
+
                     rows = []
                     for record in data:
                         try:
                             if record.get("stat") == "Ok":
                                 ist_time = epoch_to_ist(record['ssboe'])
-                                date, time = ist_time.split(' ')
+
+                                date_str = ist_time.strftime('%d-%m-%Y')
+                                time_str = ist_time.strftime('%H:%M:%S')
                                 rows.append([
-                                    symbol, date, time,
+                                    symbol, date_str, time_str,
                                     record['into'],  # Open
                                     record['inth'],  # High
                                     record['intl'],  # Low
                                     record['intc'],  # Close
-                                    record['intv'],  # Volume
+                                    max(0, float(record['intv'])),  # Volume
                                     record['oi']     # OI
                                 ])
                         except AttributeError as e:
@@ -136,22 +165,34 @@ async def hist_data_single(session, base_url, end_point, user_id, jkey, symbol, 
                             else:
                                 print(f"Attempt {attempt + 1}: Attribute error for {symbol}: {str(e)}")
 
+                    # Nothing to save or import
+                    if not rows:
+                        print(f"No data for {symbol}, skipped.")
+                        return
+
                     df = pd.DataFrame(rows, columns=['Symbol', 'Date', 'Time', 'Open', 'High', 'Low', 'Close', 'Volume', 'OI'])
                     output_file = f"{output_dir}/{symbol}.csv"
                     df.to_csv(output_file, index=False)
 
+                    # ---------- Import to AmiBroker (not broker specific) ----------
                     if do_import == 'Yes':
+                        imported = False
                         try:
                             AB = win32com.client.Dispatch("Broker.Application")
-                            AB.Import(0, output_file, "OneMinuteFeed.format")
+                            AB.Import(0, output_file, format_file+".format")
+                            imported = True
                         except Exception as e:
                             print(f"Error during import for {symbol}: {str(e)}")
 
+                        # Delete the CSV only if the import worked, otherwise keep it
                         if do_delete == 'Yes':
-                            try:
-                                os.remove(output_file)
-                            except Exception as e:
-                                print(f"Warning: Could not delete {output_file} - {str(e)}")
+                            if imported:
+                                try:
+                                    os.remove(output_file)
+                                except Exception as e:
+                                    print(f"Warning: Could not delete {output_file} - {str(e)}")
+                            else:
+                                print(f"Import failed, CSV kept: {output_file}")
                     return
 
                 elif response.status in RETRYABLE_STATUSES:
@@ -162,6 +203,8 @@ async def hist_data_single(session, base_url, end_point, user_id, jkey, symbol, 
 
         except aiohttp.ClientError as e:
             print(f"Attempt {attempt + 1}: Client error for {symbol} {token}: {str(e)}")
+        except asyncio.TimeoutError:
+            print(f"Attempt {attempt + 1}: Timeout (>{REQUEST_TIMEOUT}s) for {symbol} {token}")
         except Exception as e:
             print(f"Attempt {attempt + 1}: Exception for {symbol} {token}: {str(e)}")
 
@@ -175,11 +218,13 @@ async def hist_data_single(session, base_url, end_point, user_id, jkey, symbol, 
 
 
 async def hist_data_list(base_url, end_point, user_id, jkey, master_list,
-                         startdate, enddate, output_dir,
+                         startdate, enddate, output_dir, time_frame, format_file,
                          do_import='Yes', do_delete='Yes'):
-    async with aiohttp.ClientSession() as session:
-        df_master = pd.read_csv(master_list, names=["Exchange", "Symbol", "Token"])
-        df_master = df_master[df_master['Exchange'] != 'Exchange']  # Filter out header row
+    timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
+    async with aiohttp.ClientSession(timeout=timeout) as session:
+        df_master = pd.read_csv(master_list, names=["Exchange", "Symbol", "Token"], usecols=["Exchange", "Symbol", "Token"])
+        df_master = df_master[df_master['Exchange'] != 'Exchange']  
+        #print(df_master)
 
         for i in range(0, len(df_master), batch_size):
             print(f"\nProcessing batch {i // batch_size + 1}: symbols {i + 1} to {i + len(df_master.iloc[i:i + batch_size])}")
@@ -191,7 +236,7 @@ async def hist_data_list(base_url, end_point, user_id, jkey, master_list,
                 task = hist_data_single(
                     session, base_url, end_point, user_id, jkey,
                     row['Symbol'], row['Exchange'], row['Token'],
-                    startdate, enddate, output_dir,
+                    startdate, enddate, output_dir, time_frame, format_file,
                     do_import=do_import, do_delete=do_delete
                 )
                 tasks.append(task)
@@ -201,15 +246,17 @@ async def hist_data_list(base_url, end_point, user_id, jkey, master_list,
             except Exception as e:
                 print(f"Error during batch {i // batch_size + 1}: {str(e)}")
 
+            if session_expired:
+                print("\n*** SESSION EXPIRED. Login again and re-run. Remaining symbols skipped. ***")
+                break
+
 
 
 
 
 #Execute
 startdate = epoch(start_date, '00:00:00')
-enddate = epoch(end_date, '23:59:59')
-
-            
+enddate = epoch(end_date, '23:59:59')            
 login_dict = read_csv_dict(login_file)
 user_id = login_dict['user']
 jkey = login_dict['token']
@@ -218,6 +265,7 @@ print(f"JKey: {jkey}")
 
 print(pc_time())
 print(start_date , "-", end_date)
-asyncio.run(hist_data_list(base_url, historical_ep, user_id, jkey, master_list, startdate, enddate, output_dir, do_import=do_import, do_delete=do_delete))
+asyncio.run(hist_data_list(base_url, historical_ep, user_id, jkey, master_list, startdate, enddate, output_dir,
+                           time_frame, format_file, do_import=do_import, do_delete=do_delete))
 print(pc_time())
 input("Press Enter to exit...")
