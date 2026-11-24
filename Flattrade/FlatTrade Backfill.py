@@ -22,11 +22,12 @@ import certifi
 
 
 #Inputs
-master_list = r'C:\API\ScripMaster.csv'
+master_list = r'C:\API\Files\ScripMaster.csv'
 login_file = r"R:\FlattradeLogin1.txt"
 output_dir = r'R:'
-base_url = "https://piconnect.flattrade.in/PiConnectTP/"
+base_url = 'wss://piconnect.flattrade.in/PiConnectAPI/'
 historical_ep = 'TPSeries'
+format_file = 'Candle'
 
 #num_of_days = 7
 #batch_size = 20
@@ -36,11 +37,14 @@ start_date = (datetime.now() - timedelta(days=num_of_days)).strftime('%d-%m-%Y')
 end_date = datetime.today().strftime('%d-%m-%Y')
 
 
+#Read CSV as Dictonary
 def read_csv_dict(file_path):
     data_dict = {}
     with open(file_path, mode='r') as file:
         reader = csv.reader(file)
         for row in reader:
+            if not row:
+                continue
             key, value = row
             data_dict[key] = value
     return data_dict
@@ -53,15 +57,28 @@ def pc_time():
 #Timestamp to IST
 def epoch_to_ist(unix_timestamp):
     utc_time = datetime.fromtimestamp(int(unix_timestamp), tz=timezone.utc)
-    ist_time = utc_time.astimezone(timezone(timedelta(hours=5, minutes=30)))
-    return ist_time.strftime('%d-%m-%Y %H:%M:%S')
+    return utc_time.astimezone(
+        timezone(timedelta(hours=5, minutes=30))
+    )
 
 #Date,Time to UnixTime Stamp
 def epoch(date, time):
     dt = datetime.strptime(f"{date} {time}", '%d-%m-%Y %H:%M:%S')
     return int(dt.timestamp())
 
-async def hist_data_single(session, url, payload, symbol, token, retries=5, delay=3):
+#Exchange timing
+NSE_BSE_START = datetime.strptime("09:15:00", "%H:%M:%S").time()
+NSE_BSE_END = datetime.strptime("15:29:59", "%H:%M:%S").time()
+
+'''def exchange_timing(exchange, date_time):
+    time = date_time.time()
+
+    if exchange in ['NSE', 'BSE', 'NFO', 'BFO']:
+        return NSE_BSE_START <= time <= NSE_BSE_END
+
+    return True'''
+
+async def hist_data_single(session, url, payload, symbol, exchange, token, retries=5, delay=3):
     RETRYABLE_STATUSES = {400, 524, 500, 502, 503}
     
     # Create SSL context with certifi
@@ -80,12 +97,19 @@ async def hist_data_single(session, url, payload, symbol, token, retries=5, dela
                         try:
                             if record.get("stat") == "Ok":
                                 ist_time = epoch_to_ist(record['ssboe'])
-                                date, time = ist_time.split(' ')
+                                
+                                # Skip pre/post market data
+                                '''if not exchange_timing(exchange, ist_time):
+                                    continue'''
+
+                                date = ist_time.strftime('%d-%m-%Y')
+                                time = ist_time.strftime('%H:%M:%S')
+                                
                                 rows.append([
                                     symbol, date, time,
                                     record['into'], record['inth'],
                                     record['intl'], record['intc'],
-                                    record['intv'], record['oi']
+                                    max(0, float(record['intv'])), record['oi']
                                 ])
                         except AttributeError as e:
                             if "'str' object has no attribute 'get'" in str(e):
@@ -125,7 +149,7 @@ async def hist_data_list(base_url, end_point, user_id, jkey, master_list, startd
                     "intrv": '1'
                 }
                 payload = f'jData={json.dumps(jdata)}&jKey={jkey}'
-                tasks.append(hist_data_single(session, url, payload, row['Symbol'], row['Token']))
+                tasks.append(hist_data_single(session, url, payload, row['Symbol'], row['Exchange'],row['Token']))
             results = await asyncio.gather(*tasks)
             all_rows = [row for result in results for row in result]
             if all_rows:
@@ -136,7 +160,7 @@ async def hist_data_list(base_url, end_point, user_id, jkey, master_list, startd
                 df.to_csv(combined_file, index=False)
                 try:
                     AB = win32com.client.Dispatch("Broker.Application")
-                    AB.Import(0, combined_file, "OneMinuteFeed.format")
+                    AB.Import(0, combined_file, format_file+".format")
                     os.remove(combined_file)
                 except Exception as e:
                     print(f"Import/Delete error: {str(e)}")
