@@ -9,6 +9,13 @@ GitHub https://github.com/EasySimpleTrade
 
 RequestTimedRefresh(1,False);
 
+//Defaults
+ND = Day() != Ref(Day(),-1);
+ED = Day()!= Ref(Day(), 1);
+TN = TimeNum();
+CZ = LastValue(C);
+TZ = LastValue(TN);
+
 //Strategy Code Start---------------------------------
 Buy = Sell = Short = Cover = 0;
 //Strategy Code End -----------------------------------------
@@ -18,6 +25,97 @@ _N(Title = StrFormat("{{NAME}} - {{INTERVAL}} {{DATE}} O %g, H %g, L %g, C %g  {
 SetChartOptions(0,chartShowArrows|chartShowDates);
 SetBarFillColor( IIf( C > O, ColorRGB( 0, 75, 0 ), IIf( C <= O, ColorRGB( 75, 0, 0 ), colorLightGrey ) ) );
 Plot( C, "", IIf( C > O, ColorRGB( 0, 255, 0 ), IIf( C <= O, ColorRGB( 255, 0, 0 ), colorLightGrey ) ), 64, Null, Null, 0, 0, 1 );
+
+//Indicators
+TimeFrameSet(inDaily);
+PDH =  Ref(H,-1); PDL =  Ref(L,-1); PDC =  Ref(C,-1);
+TimeFrameRestore();
+
+PDH =  TimeFrameExpand(PDH, inDaily,expandFirst);    
+PDL =  TimeFrameExpand(PDL, inDaily,expandFirst);
+PDC =  TimeFrameExpand(PDC, inDaily,expandFirst);
+
+PWH =  TimeFrameGetPrice("H", inWeekly, -1);    
+PWL =  TimeFrameGetPrice("L", inWeekly, -1);
+
+//Pivot Points
+DPP=(PDH+PDL+PDC)/3;
+DR1=(2*DPP)-PDL;
+DR2=DPP+(PDH-PDL);
+DR3=PDH+2*(DPP-PDL);
+DS1=(2*DPP)-PDH;
+DS2=DPP-(PDH-PDL);
+DS3=PDL-2*(PDH-DPP);
+//CPR
+DLB = (PDH+PDL) / 2;
+DUB = (2*DPP) - DLB;
+//CPR TOP and Bottom
+TCPR = Prec(Max(DLB,DUB),1);
+BCPR = Prec(Min(DLB,DUB),1);
+
+//Previous Day PP, CPR Top Bottom
+PDPP   = ValueWhen(ND,Ref(DPP,-1));
+PTCPR = ValueWhen(ND,Ref(TCPR,-1));
+PBCPR = ValueWhen(ND,Ref(BCPR,-1));
+//Narrow CPR
+CPR = (abs(DUB-DLB) / C)*100;
+NCPR = (CPR < 0.05);
+//Higher High CPR
+HHCPR = BCPR > PTCPR;
+//Lower Low CPR
+LLCPR = TCPR < PBCPR;
+//Inside CPR
+ICPR = PTCPR > TCPR AND PBCPR < BCPR;
+//Outside CPR
+OCPR = PTCPR < TCPR AND PBCPR > BCPR;
+
+//VWAP 
+if (Name() == "NIFTY" ) V = Foreign("NIFTY-I","V");
+Bars = BarsSince(ED);
+NDV = Sum(V,Bars);
+VWAP = Sum (Avg * V, Bars)/NDV;
+
+
+INTRADAY = Interval() <= 1800;
+
+if(INTRADAY)
+{
+Plot (IIf(ED,Null,VWAP),"VWAP",colorCustom11,styleNoLabel);
+
+Plot( IIf(ED,Null,PDH),"", colorRed, styleNoLabel|styleNoRescale|styleDashed);
+Plot( IIf(ED,Null,PDL),"", colorLime, styleNoLabel|styleNoRescale|styleDashed);
+
+PlotText("PDH",LastValue(BarIndex()+1),LastValue(PDH),colorRed,colorDefault,-5);
+PlotText("PDL",LastValue(BarIndex()+1),LastValue(PDL),colorLime,colorDefault,-5);
+
+Plot( IIf(ED,Null,PWH),"", colorRed, styleNoLabel|styleNoRescale|styleDots);
+Plot( IIf(ED,Null,PWL),"", colorLime, styleNoLabel|styleNoRescale|styleDots);
+
+PlotText("PWH",LastValue(BarIndex()+1),LastValue(PWH),colorRed,colorDefault,-5);
+PlotText("PWL",LastValue(BarIndex()+1),LastValue(PWL),colorLime,colorDefault,-5);
+
+Plot( IIf(ED,Null,DR3),"", colorRed, styleNoLabel|styleNoRescale);
+Plot( IIf(ED,Null,DR2),"", colorRed, styleNoLabel|styleNoRescale);
+Plot( IIf(ED,Null,DR1),"", colorRed, styleNoLabel|styleNoRescale);
+Plot( IIf(ED,Null,DPP),"", colorAqua, styleNoLabel|styleNoRescale);
+Plot( IIf(ED,Null,DS1),"", colorLime, styleNoLabel|styleNoRescale);
+Plot( IIf(ED,Null,DS2),"", colorLime, styleNoLabel|styleNoRescale);
+Plot( IIf(ED,Null,DS3),"", colorLime, styleNoLabel|styleNoRescale);
+
+PlotText("DR3",LastValue(BarIndex()+1),LastValue(DR3),colorRed,colorDefault,-5);
+PlotText("DR2",LastValue(BarIndex()+1),LastValue(DR2),colorRed,colorDefault,-5);
+PlotText("DR1",LastValue(BarIndex()+1),LastValue(DR1),colorRed,colorDefault,-5);
+PlotText("DS1",LastValue(BarIndex()+1),LastValue(DS1),colorLime,colorDefault,-5);
+PlotText("DS2",LastValue(BarIndex()+1),LastValue(DS2),colorLime,colorDefault,-5);
+PlotText("DS3",LastValue(BarIndex()+1),LastValue(DS3),colorLime,colorDefault,-5);
+
+
+//Cloud
+NDTCPR = IIf(ED,Null,TCPR);
+NDBCPR = IIf(ED,Null,BCPR);
+ColorCPR = IIf(NCPR OR ICPR OR OCPR,ColorRGB(196,196,128),IIf(HHCPR,ColorRGB(0,48,0),IIf(LLCPR,ColorRGB(48,0,0),ColorRGB(0,0,48))));
+PlotOHLC( NDTCPR, NDTCPR, NDBCPR, NDBCPR, "", ColorCPR, styleNoLabel | styleCloud | styleNoRescale, Null, Null,0,-1);
+}
 //Chart Code End ---------------------------------------
 
 //Option Symbol
@@ -82,12 +180,6 @@ function OPSYM(iDatafeed,iName,iStrike,iOption,iDate,iWeekly,iExchange,iSuffix)
 }
 
 
-//Defaults
-ND = Day() != Ref(Day(),-1);
-TN = TimeNum();
-CZ = LastValue(C);
-TZ = LastValue(TN);
-
 //Parameters
 _SECTION_BEGIN("Dhan Underlying Chart to Options Order");
 
@@ -117,7 +209,7 @@ HY = Param("Button Vertical Position",0,0,89);
 _SECTION_END();
 
 //Prefix for Static Variable
-SName = STGTAG+Name()+Interval();
+SName = STGTAG+"DHN"+Name()+Interval();
 
 if (StrFind( Name(), "SENSEX" ))
 {
@@ -132,7 +224,7 @@ else if(StrFind( Name(), "BANKNIFTY" ))
 {
 SPNAME = "BANKNIFTY";
 STRDIF = 100;
-EXPDATE = EXPDATESI;
+EXPDATE = EXPDATEME;
 ISWKY = 0;
 LOTSIZE = 30;
 EXCHANGE = "NSE_FNO";
@@ -140,7 +232,7 @@ EXCHANGE = "NSE_FNO";
 else if (StrFind( Name(), "NIFTY" ))
 {
 SPNAME = "NIFTY" ;
-STRDIF = 100;
+STRDIF = 50;
 EXPDATE = EXPDATEN5;
 ISWKY = ISWKYN5;
 LOTSIZE = 65;
@@ -370,9 +462,12 @@ StaticVarSet(SName+"UPExitTime",0);
 StaticVarSet(SName+"DNExitTime",0);
 }
 
+
+OPTSYMCOK = UPSTKBC > 0 AND DNSTKBC > 0;
+
 DHNTOKENOK = 0;
 if( typeof(UPSYMTOK) == "string" AND typeof(DNSYMTOK) == "string")
-DHNTOKENOK = UPSTKBC > 0 AND DNSTKBC > 0 AND UPSYMTOK != ""  AND DNSYMTOK != "" ;
+DHNTOKENOK = UPSYMTOK != ""  AND DNSYMTOK != "" ;
 
 //Dashboard-----------------------------------------------------
 BoardColor = IIf(StaticVarGet(SName+"INUPTRADE"),colorPaleGreen, IIf(StaticVarGet(SName+"INDNTRADE"),colorPink, IIf(EnAlgo AND DHNSESSIONOK1 AND DHNTOKENOK AND EXPIRYOK, colorYellow, colorWhite)));
@@ -396,7 +491,8 @@ GfxTextOut( "MTM "+MTM , PX*2, PY*15);
 else if(EnAlgo) 
 {
 if(!EXPIRYOK)GfxTextOut("Check Expiry Date", PX*2, PY*13);  
-else if(!DHNTOKENOK) GfxTextOut("Token Not Found", PX*2, PY*16);
+
+else if(OPTSYMCOK AND !DHNTOKENOK) GfxTextOut("Token Not Found", PX*2, PY*16);
 else if(!DHNSESSIONOK1)GfxTextOut("Not Logged In", PX*2, PY*13); 
 else
 {
