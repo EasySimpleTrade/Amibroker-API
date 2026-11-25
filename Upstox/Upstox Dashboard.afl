@@ -33,12 +33,14 @@ PARAHD = Param("Number of Parallel Hist Downloads",5,1,50,1);
 
 _SECTION_BEGIN("Intra Data");
 FILETODOID =  ParamList("Intra Data download List","MasterUpstox|NIFTYUpstox|BANKNIFTYUpstox|SENSEXUpstox|NSEEquityFuturesUpstox|NSEEquityUpstox|OptionsUpstox|CRUDEOILMUpstox|SILVERMICUpstox|IndexUpstox|GlobalUpstox",0);
-
-ENIMPORTDATAID = ParamList("Import Downloaded Intra Data","Yes|No");
-ENDELETEDATAID = ParamList("Delete Downladed Intra Data","Yes|No");
+ENIMPORTDATAID = ParamList("Import Downloaded Intra Data","Yes|No",0);
+ENDELETEDATAID = ParamList("Delete Downladed Intra Data","Yes|No",0);
+TIMEINTERVALID= Param("Historical Data Time Interval ",1,300,1,1);
+TIMEUNITID= ParamList("Historical Data Time Unit ","minutes|hours|days|weeks|months",0);
 PARAID = Param("Number of Parallel Intra Downloads",5,1,50,1);
 
-
+iEXPDATEIDF = Now(5);
+EXPDATEIDF = DateTimeFormat("%d",iEXPDATEIDF)+"-"+StrToUpper( DateTimeFormat("%m",iEXPDATEIDF))+"-"+DateTimeFormat("%Y",iEXPDATEIDF);
 
 _SECTION_BEGIN("Upstox Dashboard");
 RESPPATH = ParamStr("Path to Response Files","R:\\");
@@ -117,7 +119,7 @@ NOWDATE = DateTimeFormat( "%d", Now(5) );
 if(StaticVarGetText("UPXTOKEN"+USERNUM) == "" AND LOGDATE1 == NOWDATE  AND ACSTOK1 != "")
 {
 _TRACE("Setting Upstox Session "+USERNUM);
-//StaticVarSetText("UPXUSERID"+USERNUM,USERID1);
+StaticVarSetText("UPXUSERID"+USERNUM,USERID1);
 StaticVarSetText("UPXTOKEN"+USERNUM,ACSTOK1);
 ShellExecute(LIMITSSCRIPT1," \""+StaticVarGetText("UPXUSERID"+USERNUM)+"\" \""+StaticVarGetText("UPXTOKEN"+USERNUM)+"\" ","",EnCMD);
 }
@@ -189,7 +191,8 @@ ShellExecute(BACKSCRIPT," \""+NUMDAYBF+"\" \""+PARABF+"\" ","",1);
  //INTRA Data
 if(GUIEVEID == 6 AND GUIEVENT == 1 )
 {
-ShellExecute(INTRASCRIPT," \"\" \"\" \""+ENIMPORTDATAID+"\" \""+ENDELETEDATAID+"\" \""+FILETODOID+"\"  \""+PARAID+"\"","",1);
+_TRACE("\""+EXPDATEIDF+"\" \""+EXPDATEIDF+"\" \""+ENIMPORTDATAID+"\" \""+ENDELETEDATAID+"\" \""+FILETODOID+"\" \""+TIMEINTERVALID+"\" \""+TIMEUNITID+"\" \""+PARAID+"\"");
+ShellExecute(INTRASCRIPT," \""+EXPDATEIDF+"\" \""+EXPDATEIDF+"\" \""+ENIMPORTDATAID+"\" \""+ENDELETEDATAID+"\" \""+FILETODOID+"\" \""+TIMEINTERVALID+"\" \""+TIMEUNITID+"\" \""+PARAID+"\"","",1);
 }
 
 
