@@ -45,7 +45,7 @@ format_file = 'Candle'
 # python "Upstox HistData.py" 18-08-2026 18-08-2026 Yes Yes MasterUpstox 1 25
 #
 # =========================================================
-'''
+
 start_date = sys.argv[1]
 end_date = sys.argv[2]
 do_import = sys.argv[3]
@@ -64,7 +64,7 @@ master_file = 'MasterUpstox' #IndexUpstox MasterUpstox CRUDEOILUpstox
 time_frame = '1'
 unit = 'minutes'
 batch_size = 25
-
+'''
 
 
 print("start_date=" + start_date)
@@ -78,6 +78,8 @@ print("batch_size=" + str(batch_size))
 
 
 master_list = fr'C:\API\Files\{master_file}.csv'
+
+input("Press enter to exit...")
 
 # =========================================================
 # Validate time frame
@@ -1207,3 +1209,4 @@ print(
 input(
     'Press Enter to exit...'
 )
+
