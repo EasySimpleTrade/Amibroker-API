@@ -9,6 +9,13 @@ GitHub https://github.com/EasySimpleTrade
 
 RequestTimedRefresh(1,False);
 
+//Defaults
+ND = Day() != Ref(Day(),-1);
+ED = Day()!= Ref(Day(), 1);
+TN = TimeNum();
+CZ = LastValue(C);
+TZ = LastValue(TN);
+
 //Strategy Code Start---------------------------------
 Buy = Sell = Short = Cover = 0;
 //Strategy Code End -----------------------------------------
@@ -19,17 +26,153 @@ SetChartOptions(0,chartShowArrows|chartShowDates);
 SetBarFillColor( IIf( C > O, ColorRGB( 0, 75, 0 ), IIf( C <= O, ColorRGB( 75, 0, 0 ), colorLightGrey ) ) );
 Plot( C, "", IIf( C > O, ColorRGB( 0, 255, 0 ), IIf( C <= O, ColorRGB( 255, 0, 0 ), colorLightGrey ) ), 64, Null, Null, 0, 0, 1 );
 
+//Indicators
+TimeFrameSet(inDaily);
+PDH =  Ref(H,-1); PDL =  Ref(L,-1); PDC =  Ref(C,-1);
+TimeFrameRestore();
+
+PDH =  TimeFrameExpand(PDH, inDaily,expandFirst);    
+PDL =  TimeFrameExpand(PDL, inDaily,expandFirst);
+PDC =  TimeFrameExpand(PDC, inDaily,expandFirst);
+
+PWH =  TimeFrameGetPrice("H", inWeekly, -1);    
+PWL =  TimeFrameGetPrice("L", inWeekly, -1);
+
+//Pivot Points
+DPP=(PDH+PDL+PDC)/3;
+DR1=(2*DPP)-PDL;
+DR2=DPP+(PDH-PDL);
+DR3=PDH+2*(DPP-PDL);
+DS1=(2*DPP)-PDH;
+DS2=DPP-(PDH-PDL);
+DS3=PDL-2*(PDH-DPP);
+//CPR
+DLB = (PDH+PDL) / 2;
+DUB = (2*DPP) - DLB;
+//CPR TOP and Bottom
+TCPR = Prec(Max(DLB,DUB),1);
+BCPR = Prec(Min(DLB,DUB),1);
+
+//Previous Day PP, CPR Top Bottom
+PDPP   = ValueWhen(ND,Ref(DPP,-1));
+PTCPR = ValueWhen(ND,Ref(TCPR,-1));
+PBCPR = ValueWhen(ND,Ref(BCPR,-1));
+//Narrow CPR
+CPR = (abs(DUB-DLB) / C)*100;
+NCPR = (CPR < 0.05);
+//Higher High CPR
+HHCPR = BCPR > PTCPR;
+//Lower Low CPR
+LLCPR = TCPR < PBCPR;
+//Inside CPR
+ICPR = PTCPR > TCPR AND PBCPR < BCPR;
+//Outside CPR
+OCPR = PTCPR < TCPR AND PBCPR > BCPR;
+
+//VWAP 
+if (Name() == "NIFTY" ) V = Foreign("NIFTY-I","V");
+Bars = BarsSince(ED);
+NDV = Sum(V,Bars);
+VWAP = Sum (Avg * V, Bars)/NDV;
+
+
+INTRADAY = Interval() <= 1800;
+
+if(INTRADAY)
+{
+Plot (IIf(ED,Null,VWAP),"VWAP",colorCustom11,styleNoLabel);
+
+Plot( IIf(ED,Null,PDH),"", colorRed, styleNoLabel|styleNoRescale|styleDashed);
+Plot( IIf(ED,Null,PDL),"", colorLime, styleNoLabel|styleNoRescale|styleDashed);
+
+PlotText("PDH",LastValue(BarIndex()+1),LastValue(PDH),colorRed,colorDefault,-5);
+PlotText("PDL",LastValue(BarIndex()+1),LastValue(PDL),colorLime,colorDefault,-5);
+
+Plot( IIf(ED,Null,PWH),"", colorRed, styleNoLabel|styleNoRescale|styleDots);
+Plot( IIf(ED,Null,PWL),"", colorLime, styleNoLabel|styleNoRescale|styleDots);
+
+PlotText("PWH",LastValue(BarIndex()+1),LastValue(PWH),colorRed,colorDefault,-5);
+PlotText("PWL",LastValue(BarIndex()+1),LastValue(PWL),colorLime,colorDefault,-5);
+
+Plot( IIf(ED,Null,DR3),"", colorRed, styleNoLabel|styleNoRescale);
+Plot( IIf(ED,Null,DR2),"", colorRed, styleNoLabel|styleNoRescale);
+Plot( IIf(ED,Null,DR1),"", colorRed, styleNoLabel|styleNoRescale);
+Plot( IIf(ED,Null,DPP),"", colorAqua, styleNoLabel|styleNoRescale);
+Plot( IIf(ED,Null,DS1),"", colorLime, styleNoLabel|styleNoRescale);
+Plot( IIf(ED,Null,DS2),"", colorLime, styleNoLabel|styleNoRescale);
+Plot( IIf(ED,Null,DS3),"", colorLime, styleNoLabel|styleNoRescale);
+
+PlotText("DR3",LastValue(BarIndex()+1),LastValue(DR3),colorRed,colorDefault,-5);
+PlotText("DR2",LastValue(BarIndex()+1),LastValue(DR2),colorRed,colorDefault,-5);
+PlotText("DR1",LastValue(BarIndex()+1),LastValue(DR1),colorRed,colorDefault,-5);
+PlotText("DS1",LastValue(BarIndex()+1),LastValue(DS1),colorLime,colorDefault,-5);
+PlotText("DS2",LastValue(BarIndex()+1),LastValue(DS2),colorLime,colorDefault,-5);
+PlotText("DS3",LastValue(BarIndex()+1),LastValue(DS3),colorLime,colorDefault,-5);
+
+
+//Cloud
+NDTCPR = IIf(ED,Null,TCPR);
+NDBCPR = IIf(ED,Null,BCPR);
+ColorCPR = IIf(NCPR OR ICPR OR OCPR,ColorRGB(196,196,128),IIf(HHCPR,ColorRGB(0,48,0),IIf(LLCPR,ColorRGB(48,0,0),ColorRGB(0,0,48))));
+PlotOHLC( NDTCPR, NDTCPR, NDBCPR, NDBCPR, "", ColorCPR, styleNoLabel | styleCloud | styleNoRescale, Null, Null,0,-1);
+}
+
 //Chart Code End ---------------------------------------
 
 //Option Symbol
-function OPSYM(iDatafeed,iName,iStrike,iOption,iDate,iWeekly)
+
+function OPSYM(iDatafeed,iName,iStrike,iOption,iDate,iWeekly,iExchange,iSuffix)
 {
-	//Finvasia
+	//Kotak
+	if(iDatafeed == "Kotak")
+		{
+		FTMM = DateTimeFormat("%#m",iDate);
+		if(iWeekly==1)		result = iName+DateTimeFormat("%y",iDate)+WriteIf(StrToNum(FTMM) > 9, StrLeft( DateTimeFormat("%b",iDate),1),FTMM)+DateTimeFormat("%d",iDate)+iStrike+iOption;
+		else		result = iName+DateTimeFormat("%y",iDate)+StrToUpper( DateTimeFormat("%b",iDate))+iStrike+iOption;
+		}
+	else 
+	//Flattrade
 	if(iDatafeed == "Flattrade" )
 		{
+		if(iExchange == "BFO")
+		{
+		FTMM = DateTimeFormat("%#m",iDate);
+		if(iWeekly==1)		result = iName+DateTimeFormat("%y",iDate)+WriteIf(StrToNum(FTMM) > 9, StrLeft( DateTimeFormat("%b",iDate),1),FTMM)+DateTimeFormat("%d",iDate)+iStrike+iOption;
+		else		result = iName+DateTimeFormat("%y",iDate)+StrToUpper( DateTimeFormat("%b",iDate))+iStrike+iOption;
+		}
+		else
+		{
 		result = iName+DateTimeFormat("%d",iDate)+StrToUpper( DateTimeFormat("%b",iDate))+DateTimeFormat("%y",iDate)+StrTrim(iOption,"E")+iStrike;		
+		}
 		}	
 	else
+	//Amifeed
+	if(iDatafeed == "Amifeed")
+		{
+		if(iWeekly==1)		result = iName+"WK"+iStrike+iOption;
+		else		result = iName+iStrike+iOption;
+		}	
+	else  	
+	//Valvenet VBiz BestRT
+	if(iDatafeed == "VBiz")
+		{
+		if(iWeekly==1)		result = iName+"_"+iStrike+iOption+"-"+DateTimeFormat("%d",iDate) + StrToUpper(DateTimeFormat("%b",iDate)) + DateTimeFormat("%Y",iDate);
+		else		result = iName+"_"+iStrike+iOption+"-"+"I";
+		}
+	else	
+	
+	//EqualSolutions
+	if(iDatafeed == "EqualSolutions")
+		{
+		if(iWeekly==1)		result = iName+DateTimeFormat("%y",iDate)+StrToUpper( DateTimeFormat("%b",iDate))+DateTimeFormat("%d",iDate)+"_"+iStrike+iOption;
+		else		result = iName+DateTimeFormat("%y",iDate)+StrToUpper( DateTimeFormat("%b",iDate))+"_"+iStrike+iOption;
+		}	 
+	//EST
+	else if(iDatafeed == "EST" )
+		{
+		result = iName+iStrike+iOption+iSuffix;
+		}	
+		else		
 	//Default
 		{
 		result = iName+iStrike+iOption;
@@ -37,41 +180,44 @@ function OPSYM(iDatafeed,iName,iStrike,iOption,iDate,iWeekly)
     return result;    
 }
 
-//Defaults
-ND = Day() != Ref(Day(),-1);
-TN = TimeNum();
-CZ = LastValue(C);
-TZ = LastValue(TN);
 
+//Parameters
 _SECTION_BEGIN("Flattrade Underlying to Options Order");
 
-EXPDATEN5 = ParamDate( "Expiry Date N50", "12-06-2025", 2 );
-EXPDATEBN = ParamDate( "Expiry Date BNF", "26-06-2025", 2 );
-EXPDATESX = ParamDate( "Expiry Date SEN", "27-05-2025", 2 );
+EXPDATEN5 = ParamDate( "Expiry Date N50", Now(1), 2 );
+EXPDATESX = ParamDate( "Expiry Date SEN", Now(1), 2 );
+EXPDATEME = ParamDate( "Monthly Expiry Date", Now(1), 2 );
 
-UPNSTRK = Param("Strikes from ATM UPTrend", 3, -50 ,50,1);
-DNNSTRK = Param("Strikes from ATM DNTrend", 3, -50 ,50,1);
+ISWKYN5 = ParamToggle( "Weekly|Monthly N50", "Monthly|Weekly",1);
+ISWKYSX = ParamToggle( "Weekly|Monthly SEN", "Monthly|Weekly",1);
+
+UPNSTRK = Param("Strikes from ATM UPTrend", 0, -50 ,50,1);
+DNNSTRK = Param("Strikes from ATM DNTrend", 0, -50 ,50,1);
+LOTS = Param("No. of Lots",1,1,50);
+
 EnAlgo = ParamToggle("Enable Algo","No|Yes",1);
 EnOrdNo = ParamToggle("Need Order No","No|Yes",1);
-LOTS = Param("No. of Lots",1,1,50);
+
+LMTOFS = Param("Limit Order Offset in %", 5,0.0,10,0.1)/100;
+DFEED = ParamList("Data Feed", "EST|Amifeed|VBiz|EqualSolutions",0);
+OPTFIX = ParamList("Options suffix", "|-I|-II|-III",1);
+
 OUTPATH = ParamStr("Path to Save Response","R:\\");
-USERNUM = Param("User Number",1,1,100,1);//For Multi User Accounts 
+STGTAG = ParamStr("Strategy Tag","U2O");
+
 HX = Param("Button Horizontal Position",0,0,164);
 HY = Param("Button Vertical Position",0,0,89);
 _SECTION_END();
 
-ISWKYSX = ISWKYBN = ISWKYN5 = 0;
-
 //Prefix for Static Variable
-STGTAG = "U2O";
-SName = STGTAG+Name()+Interval();
+SName = STGTAG+"FLA"+Name()+Interval();
 
 if (StrFind( Name(), "SENSEX" ))
 {
 SPNAME = "SENSEX";
 STRDIF = 100;
-EXPDATE = EXPDATEMC;
-ISWKY = ISWKYMC;
+EXPDATE = EXPDATESX;
+ISWKY = ISWKYSX;
 LOTSIZE = 20;
 EXCHANGE = "BFO";
 }
@@ -79,32 +225,43 @@ else if(StrFind( Name(), "BANKNIFTY" ))
 {
 SPNAME = "BANKNIFTY";
 STRDIF = 100;
-EXPDATE = EXPDATEBN;
-ISWKY = ISWKYBN;
+EXPDATE = EXPDATEME;
+ISWKY = 0;//ISWKYBN;
 LOTSIZE = 30;
 EXCHANGE = "NFO";
 }
 else if (StrFind( Name(), "NIFTY" ))
 {
 SPNAME = "NIFTY";
-STRDIF = 100;
+STRDIF = 50;
 EXPDATE = EXPDATEN5;
 ISWKY = ISWKYN5;
-LOTSIZE = 75;
+LOTSIZE = 65;
 EXCHANGE = "NFO";
 }
 else
 {
 SPNAME = Name();
-STRDIF = 1;
-EXPDATE = EXPDATEBN;
-ISWKY = ISWKYBN;
-LOTSIZE = 10;
-EXCHANGE = "NFO";
+STRDIF = PointValue;
+EXPDATE = GetFnData("DividendPayDate");
+ISWKY = 0;
+LOTSIZE = RoundLotSize;
+EXCHANGE = GroupID(1);
 }
 
 //ATM
 ATM = Round(CZ/STRDIF) * STRDIF;
+
+ATMCE = OPSYM(DFEED,SPNAME,NumToStr(ATM,1.0,False),"CE",EXPDATE,ISWKY,EXCHANGE,OPTFIX);
+ATMPE = OPSYM(DFEED,SPNAME,NumToStr(ATM,1.0,False),"PE",EXPDATE,ISWKY,EXCHANGE,OPTFIX);
+
+ATMCEC = LastValue(Foreign(ATMCE,"C"));
+ATMPEC = LastValue(Foreign(ATMPE,"C"));
+IFUTC = ATM + ATMCEC - ATMPEC;
+ATM = Round(IFUTC/STRDIF) * STRDIF;
+
+//Checking Expiry date
+EXPIRYOK = EXPDATE >= Now(5);
 
 
 //Button Code Start----------------------------------------------------
@@ -161,9 +318,11 @@ HandleEvents();
 
 //Order Place Code Start-----------------------------------------------------------
 
+BASEURL = "https://piconnect.flattrade.in/PiConnectAPI/PlaceOrder";
+
 function FlatTradeOrder(TRANTYPE,TSYM,QTY,PRC,TRGPRC,PRCTYP,PRD,EXCH,UID,TOKEN,REMARKS,OUT)
 {
-ShellExecute("Curl.exe","https://piconnect.flattrade.in/PiConnectTP/PlaceOrder -d \"jData={\\\"ordersource\\\": \\\"API\\\", \\\"uid\\\": \\\""+UID+"\\\", \\\"actid\\\": \\\""+UID+"\\\", \\\"trantype\\\": \\\""+TRANTYPE+"\\\", \\\"prd\\\": \\\""+PRD+"\\\", \\\"exch\\\": \\\""+EXCH+"\\\", \\\"tsym\\\": \\\""+TSYM+"\\\", \\\"qty\\\": \\\""+QTY+"\\\", \\\"dscqty\\\": \\\"0\\\", \\\"prctyp\\\": \\\""+PRCTYP+"\\\", \\\"prc\\\": \\\""+PRC+"\\\", \\\"trgprc\\\": \\\""+TRGPRC+"\\\", \\\"ret\\\": \\\"DAY\\\", \\\"remarks\\\": \\\""+REMARKS+"\\\", \\\"amo\\\": \\\"NO\\\"}\" -d \"jKey="+TOKEN+"\" "+OUT+"","",0);
+ShellExecute("Curl.exe",""+BASEURL+" -d \"jData={\\\"ordersource\\\": \\\"API\\\", \\\"uid\\\": \\\""+UID+"\\\", \\\"actid\\\": \\\""+UID+"\\\", \\\"trantype\\\": \\\""+TRANTYPE+"\\\", \\\"prd\\\": \\\""+PRD+"\\\", \\\"exch\\\": \\\""+EXCH+"\\\", \\\"tsym\\\": \\\""+TSYM+"\\\", \\\"qty\\\": \\\""+QTY+"\\\", \\\"dscqty\\\": \\\"0\\\", \\\"prctyp\\\": \\\""+PRCTYP+"\\\", \\\"prc\\\": \\\""+PRC+"\\\", \\\"trgprc\\\": \\\""+TRGPRC+"\\\", \\\"ret\\\": \\\"DAY\\\", \\\"remarks\\\": \\\""+REMARKS+"\\\", \\\"amo\\\": \\\"NO\\\"}\" -d \"jKey="+TOKEN+"\" "+OUT+"","",0);
 return ;
 }
 
@@ -183,60 +342,111 @@ CHANNELID = ParamStr("Channel ID","");
 */
 
 
-FLAUID1 = StaticVarGetText("FLAUSERID"+USERNUM);
-FLATOK1 = StaticVarGetText("FLATOKEN"+USERNUM);
-OUTRESP1 = WriteIf(EnOrdNo,"-o "+OUTPATH+"\\"+Name()+USERNUM+".txt","");
-SESSIONOK = FLAUID1 != "" AND FLATOK1 != "" ;
+FLAUID1 = StaticVarGetText("FLAUSERID"+"1");//"1" - User Number
+FLATOK1 = StaticVarGetText("FLATOKEN"+"1");//"1" - User Number
+FLASESSIONOK1 = FLAUID1 != "" AND FLATOK1 != "" ;
+
+FLAOUTRESP1 = WriteIf(EnOrdNo,"-o "+OUTPATH+"\\"+Name()+"FLA"+"1"+".txt","");//"1" - User Number
 
 
 //Quantity
-QTY = ""+LOTS * LOTSIZE;
-
+QTY = LOTS * LOTSIZE;
 
 //Order Place Function Parameters: Buy/Sell, Symbol, Quantity, Price,Trigger Price, PriceType LMT/MKT/SL-LMT/SL-MKT, Product C-CNC M-NRML  H-CO  B-BO I-MIS  F-MTF, Exchange, User ID, Access Token,Respone enable and path
 
-
-if (LastValue(Buy) AND Nz(StaticVarGet(SName+"INUPTRADE")) == 0 AND Nz(StaticVarGet(SName+"UPExitTime")) != TZ)
+//Buy---------------------------------------------------------------------------------------------------
+if (LastValue(Buy) AND Nz(StaticVarGet(SName+"INUPTRADE")) == 0  AND Nz(StaticVarGet(SName+"INDNTRADE")) == 0 AND Nz(StaticVarGet(SName+"UPExitTime")) != TZ)
 {
 StaticVarSet(SName+"BATM",LastValue(ATM));
-UPSTKB = OPSYM("Flattrade",SPNAME,StaticVarGet(SName+"BATM")+(UPNSTRK*STRDIF),"CE",EXPDATE,ISWKY);
-if(EnAlgo AND SESSIONOK) FlatTradeOrder("B",UPSTKB,QTY,"0","None","MKT","M",EXCHANGE,FLAUID1,FLATOK1,STGTAG,OUTRESP1);
+UPSTKB = OPSYM("Flattrade",SPNAME,StaticVarGet(SName+"BATM")+(UPNSTRK*STRDIF),"CE",EXPDATE,ISWKY,EXCHANGE,OPTFIX);
+OPSYMCE = OPSYM(DFEED,SPNAME,StaticVarGet(SName+"BATM")+(UPNSTRK*STRDIF),"CE",EXPDATE,ISWKY,EXCHANGE,OPTFIX);
+UPSTKBC = LastValue(Foreign(OPSYMCE,"C"));
+UPBUYOFS = round(UPSTKBC * (1+LMTOFS));
+
+if(EnAlgo AND FLASESSIONOK1) FlatTradeOrder("B",UPSTKB,QTY,UPBUYOFS,"None","LMT","M",EXCHANGE,FLAUID1,FLATOK1,STGTAG,FLAOUTRESP1);
+
 StaticVarSet(SName+"INUPTRADE",1);
-BuyMessage = "Buy "+UPSTKB+" "+CZ;
+StaticVarSet(SName+"INUPTRADE"+"ENTRY",UPSTKBC);
+
+BuyMessage = "Buy "+UPSTKB+" - "+QTY+" @ "+UPSTKBC;
 _TRACE(BuyMessage);
+
 //PopupWindow(BuyMessage, Name(),5,800,50);
 //Telegram(BOTKEY,CHANNELID,BuyMessage); 
 }
-UPSTKB = OPSYM("Flattrade",SPNAME,StaticVarGet(SName+"BATM")+(UPNSTRK*STRDIF),"CE",EXPDATE,ISWKY);
-if (LastValue(Sell)  AND StaticVarGet(SName+"INUPTRADE") == 1)
+
+UPSTKB = OPSYM("Flattrade",SPNAME,StaticVarGet(SName+"BATM")+(UPNSTRK*STRDIF),"CE",EXPDATE,ISWKY,EXCHANGE,OPTFIX);
+OPSYMCE = OPSYM(DFEED,SPNAME,StaticVarGet(SName+"BATM")+(UPNSTRK*STRDIF),"CE",EXPDATE,ISWKY,EXCHANGE,OPTFIX);
+UPSTKBC = LastValue(Foreign(OPSYMCE,"C"));
+UPSELOFS = round(UPSTKBC * (1-LMTOFS));
+
+UPENTRY = StaticVarGet(SName+"INUPTRADE"+"ENTRY") ;
+UPPNL = round((UPSTKBC - UPENTRY)*LOTSIZE);
+
+MTM = Nz(StaticVarGet(SName+"MTM"));
+
+//Sell---------------------------------------------------------------------------------------------------
+if (LastValue(Sell)  AND StaticVarGet(SName+"INUPTRADE"))
 {
-if(EnAlgo AND SESSIONOK) FlatTradeOrder("S",UPSTKB,QTY,"0","None","MKT","M",EXCHANGE,FLAUID1,FLATOK1,STGTAG,OUTRESP1);
+if(EnAlgo AND FLASESSIONOK1) FlatTradeOrder("S",UPSTKB,QTY,UPSELOFS,"None","LMT","M",EXCHANGE,FLAUID1,FLATOK1,STGTAG,FLAOUTRESP1);
+
 StaticVarSet(SName+"INUPTRADE",0);
 StaticVarSet(SName+"UPExitTime",TZ);
-SellMessage = "Sell "+UPSTKB+" "+CZ;
+StaticVarSet(SName+"MTM", MTM+UPPNL);
+
+SellMessage = "Sell "+UPSTKB+" - "+QTY+" @ "+UPSTKBC;
 _TRACE(SellMessage);
+_TRACE("PNL "+UPPNL);
+_TRACE("MTM "+StaticVarGet(SName+"MTM"));
+
 //PopupWindow(SellMessage, Name(),5,800,50);
 //Telegram(BOTKEY,CHANNELID,SellMessage); 
 }
-if (LastValue(Short) AND Nz(StaticVarGet(SName+"INDNTRADE")) == 0 AND Nz(StaticVarGet(SName+"DNExitTime")) != TZ )
+
+//Short---------------------------------------------------------------------------------------------------
+if (LastValue(Short) AND Nz(StaticVarGet(SName+"INUPTRADE")) == 0 AND Nz(StaticVarGet(SName+"INDNTRADE")) == 0  AND Nz(StaticVarGet(SName+"DNExitTime")) != TZ)
 {
 StaticVarSet(SName+"SATM",LastValue(ATM));
-DNSTKB = OPSYM("Flattrade",SPNAME,StaticVarGet(SName+"SATM")-(DNNSTRK*STRDIF),"PE",EXPDATE,ISWKY);
-if(EnAlgo AND SESSIONOK) FlatTradeOrder("B",DNSTKB,QTY,"0","None","MKT","M",EXCHANGE,FLAUID1,FLATOK1,STGTAG,OUTRESP1);
+DNSTKB = OPSYM("Flattrade",SPNAME,StaticVarGet(SName+"SATM")-(DNNSTRK*STRDIF),"PE",EXPDATE,ISWKY,EXCHANGE,OPTFIX);
+OPSYMPE = OPSYM(DFEED,SPNAME,StaticVarGet(SName+"SATM")-(DNNSTRK*STRDIF),"PE",EXPDATE,ISWKY,EXCHANGE,OPTFIX);
+DNSTKBC = LastValue(Foreign(OPSYMPE,"C"));
+DNBUYOFS = round(DNSTKBC * (1+LMTOFS));
+
+
+if(EnAlgo AND FLASESSIONOK1) FlatTradeOrder("B",DNSTKB,QTY,DNBUYOFS,"None","LMT","M",EXCHANGE,FLAUID1,FLATOK1,STGTAG,FLAOUTRESP1);
+
 StaticVarSet(SName+"INDNTRADE",1);
-ShortMessage = "Buy "+DNSTKB+" "+CZ;
+StaticVarSet(SName+"INDNTRADE"+"ENTRY",DNSTKBC);
+
+ShortMessage = "Buy "+DNSTKB+" - "+QTY+" @ "+DNSTKBC;
 _TRACE(ShortMessage);
+
 //PopupWindow(ShortMessage, Name(),10,300,50);
 //Telegram(BOTKEY,CHANNELID,ShortMessage); 
 }
-DNSTKB = OPSYM("Flattrade",SPNAME,StaticVarGet(SName+"SATM")-(DNNSTRK*STRDIF),"PE",EXPDATE,ISWKY);
-if (LastValue(Cover)  AND StaticVarGet(SName+"INDNTRADE") == 1)
+
+DNSTKB = OPSYM("Flattrade",SPNAME,StaticVarGet(SName+"SATM")-(DNNSTRK*STRDIF),"PE",EXPDATE,ISWKY,EXCHANGE,OPTFIX);
+OPSYMPE = OPSYM(DFEED,SPNAME,StaticVarGet(SName+"SATM")-(DNNSTRK*STRDIF),"PE",EXPDATE,ISWKY,EXCHANGE,OPTFIX);
+DNSTKBC = LastValue(Foreign(OPSYMPE,"C"));
+DNSELOFS = round(DNSTKBC * (1-LMTOFS));
+
+DNENTRY = StaticVarGet(SName+"INDNTRADE"+"ENTRY") ;
+DNPNL = round((DNSTKBC - DNENTRY)*LOTSIZE);
+
+//Cover---------------------------------------------------------------------------------------------------
+if (LastValue(Cover)  AND StaticVarGet(SName+"INDNTRADE"))
 {
-if(EnAlgo AND SESSIONOK) FlatTradeOrder("S",DNSTKB,QTY,"0","None","MKT","M",EXCHANGE,FLAUID1,FLATOK1,STGTAG,OUTRESP1);
+if(EnAlgo AND FLASESSIONOK1) FlatTradeOrder("S",DNSTKB,QTY,DNSELOFS,"None","LMT","M",EXCHANGE,FLAUID1,FLATOK1,STGTAG,FLAOUTRESP1);
+
 StaticVarSet(SName+"INDNTRADE",0);
 StaticVarSet(SName+"DNExitTime",TZ);
-CoverMessage = "Sell "+DNSTKB+" "+CZ;
+StaticVarSet(SName+"MTM", MTM+DNPNL);
+
+CoverMessage = "Sell "+DNSTKB+" - "+QTY+" @ "+DNSTKBC;
 _TRACE(CoverMessage);
+_TRACE("PNL "+DNPNL);
+_TRACE("MTM "+StaticVarGet(SName+"MTM"));
+
 //PopupWindow(CoverMessage, Name(),10,700,50);
 //Telegram(BOTKEY,CHANNELID,CoverMessage); 
 }
@@ -251,26 +461,35 @@ StaticVarSet(SName+"UPExitTime",0);
 StaticVarSet(SName+"DNExitTime",0);
 }
 
-//Dashboard
-BoardColor = IIf(StaticVarGet(SName+"INUPTRADE") == 1 ,colorPaleGreen,IIf(StaticVarGet(SName+"INDNTRADE") == 1,colorPink,IIf(EnAlgo AND SESSIONOK,colorYellow,colorWhite)));
+//Dashboard-----------------------------------------------------
+BoardColor = IIf(StaticVarGet(SName+"INUPTRADE"),colorPaleGreen,IIf(StaticVarGet(SName+"INDNTRADE"),colorPink,IIf(EnAlgo AND FLASESSIONOK1 AND EXPIRYOK,colorYellow,colorWhite)));
 GfxSetBkColor(BoardColor);
 GfxSelectSolidBrush(BoardColor);
 GfxRoundRect(PX*1, PY*10, PX*25, PY*18,PX,PX);
 
+
 If(StaticVarGet(SName+"INUPTRADE"))
 {
-GfxTextOut(UPSTKB, PX*2, PY*11);
+GfxTextOut(UPSTKB+" "+UPSTKBC, PX*2, PY*11);
+GfxTextOut( "Entry "+UPENTRY+"   PnL "+UPPNL , PX*2, PY*13);
+GfxTextOut( "MTM "+MTM , PX*2, PY*15);
 }
 else If(StaticVarGet(SName+"INDNTRADE"))
 {
-GfxTextOut(DNSTKB, PX*2, PY*11);
+GfxTextOut(DNSTKB+" "+DNSTKBC, PX*2, PY*11);
+GfxTextOut( "Entry "+DNENTRY+"   PnL "+DNPNL , PX*2, PY*13);
+GfxTextOut( "MTM "+MTM , PX*2, PY*15);
 }
+else if(EnAlgo) 
+{
+if(!EXPIRYOK)GfxTextOut("Check Expiry Date", PX*2, PY*13);  
+else if(!FLASESSIONOK1)GfxTextOut("Not Logged In", PX*2, PY*13); 
 else
 {
-GfxTextOut(UPSTKB, PX*2, PY*11);
-GfxTextOut(DNSTKB, PX*2, PY*13);
+GfxTextOut(UPSTKB+" "+UPSTKBC, PX*2, PY*11);
+GfxTextOut(DNSTKB+" "+DNSTKBC, PX*2, PY*13);
+GfxTextOut( "LOTS "+LOTS+" MTM "+MTM , PX*2, PY*15);
+}
 }
 
-
-if(EnAlgo AND !SESSIONOK)GfxTextOut("Not Logged In", PX*2, PY*15); 
 
