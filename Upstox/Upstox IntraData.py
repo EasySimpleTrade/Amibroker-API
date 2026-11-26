@@ -79,7 +79,7 @@ print("batch_size=" + str(batch_size))
 
 master_list = fr'C:\API\Files\{master_file}.csv'
 
-input("Press enter to exit...")
+#input("Press enter to exit...")
 
 # =========================================================
 # Validate time frame
