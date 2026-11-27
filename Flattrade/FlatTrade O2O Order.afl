@@ -295,7 +295,7 @@ StaticVarSet(SName+"UPExitTime", TZ);
 
 
 //Dashboard
-BoardColor = IIf(StaticVarGet(SName+"INUPTRADE") AND CEPE == "C", colorPaleGreen,IIf(StaticVarGet(SName+"INUPTRADE") AND CEPE == "P", colorPink,IIf(EnAlgo  AND FLASESSIONOK1,colorYellow,colorWhite)));
+BoardColor = IIf(StaticVarGet(SName+"INUPTRADE") AND CEPEFUL == "CE"+OPTFIX, colorPaleGreen,IIf(StaticVarGet(SName+"INUPTRADE") AND CEPEFUL == "PE"+OPTFIX, colorPink,IIf(EnAlgo  AND FLASESSIONOK1,colorYellow,colorWhite)));
 GfxSetBkColor(BoardColor);
 GfxSelectSolidBrush(BoardColor);
 GfxRoundRect(PX*1, PY*6, PX*28, PY*12,PX,PX);
