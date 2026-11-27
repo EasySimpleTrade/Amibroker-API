@@ -9,6 +9,42 @@ GitHub https://github.com/EasySimpleTrade
 
 RequestTimedRefresh(1,False);
 
+//Strategy Code Start---------------------------------
+Buy = Sell = 0;
+//Strategy Code End ----------------------------------
+
+_SECTION_BEGIN("FlatTrade Options to Options");
+DFEED = ParamList("Data Feed", "EST|Amifeed|VBiz|EqualSolutions",0);
+OPTFIX = ParamList("Options suffix", "|-I|-II|-III",1);
+EXPDATEN5 = ParamDate( "Expiry Date N50", Now(1), 2 );
+EXPDATEBN = ParamDate( "Expiry Date BNF", Now(1), 2 );
+EXPDATESX = ParamDate( "Expiry Date SEN", Now(1), 2 );
+
+ISWKYN5 = ParamToggle( "Weekly|Monthly N50", "Monthly|Weekly",1);
+ISWKYSX = ParamToggle( "Weekly|Monthly SEN", "Monthly|Weekly",1);
+
+EnAlgo = ParamToggle("Enable Place Order","No|Yes",1);
+EnOrdNo = ParamToggle("Need Order No","No|Yes",1);
+LOTS = Param("No. of Lots",1,1,50);
+LMTOFS = Param("Limit Order Offset in %", 5,0.0,20,0.1)/100;
+PLOTOI = ParamList("Plot OI","Cloud,StairCase,None",0);
+PLOTRSI = ParamToggle("Plot RSI", "No|Yes",1);
+RSIP = Param("RSI Period",14,1,200,10);
+RSIOZ = Param("RSI OverZone 60/40 = 10",0,0,50,5);
+OUTPATH = ParamStr("Path to Save Response","R:\\");
+HX = Param("Button Horizontal Position",0,0,164);
+HY = Param("Button Vertical Position",0,0,89);
+_SECTION_END();
+
+//Defaults
+ND = Day() != Ref(Day(),-1);
+ED = Day()!= Ref(Day(), 1);
+TN = TimeNum();
+CZ = LastValue(C);
+TZ = LastValue(TN);
+Bars = 1 + BarsSince(ND);
+NDV = Sum(V,Bars);
+
 function SYMEXTR(iDatafeed,iName,iDate)
 {
 	//Amifeed
@@ -40,43 +76,55 @@ function SYMEXTR(iDatafeed,iName,iDate)
     return result;    
 }
 
-//Strategy Code Start---------------------------------
-Buy = Sell = 0;
-//Strategy Code End -----------------------------------------
-
+//Chart Code Start================================
 
 _N(Title = StrFormat("{{NAME}} - {{INTERVAL}} {{DATE}} O %g, H %g, L %g, C %g, V %g  {{VALUES}}", O, H, L, C, V  ));
 SetChartOptions( 1, chartShowDates, chartGridMiddle, 0, 0, 0 );
 SetBarFillColor( IIf( C > O, ColorRGB( 0, 75, 0 ), IIf( C <= O, ColorRGB( 75, 0, 0 ), colorLightGrey ) ) );
 Plot( C, "", IIf( C > O, ColorRGB( 0, 255, 0 ), IIf( C <= O, ColorRGB( 255, 0, 0 ), colorLightGrey ) ), 64, Null, Null, 0, 0, 1 );
 
-//Defaults
-ND = Day() != Ref(Day(),-1);
-ED = Day()!= Ref(Day(), 1);
-TN = TimeNum();
-CZ = LastValue(C);
-TZ = LastValue(TN);
+//Indictors
+//VWAP
+VWAP = Sum (Avg * V, Bars)/NDV;
+Plot (IIf(ED,Null,VWAP),"VWAP",colorCustom11,styleNoLabel);
 
-_SECTION_BEGIN("Options to Options");
-DFEED = ParamList("Data Feed", "EST|Amifeed|VBiz|EqualSolutions",0);
-EXPDATEN5 = ParamDate( "Expiry Date N50", "12-06-2025", 2 );
-EXPDATEBN = ParamDate( "Expiry Date BNF", "26-06-2025", 2 );
-EXPDATESX = ParamDate( "Expiry Date SEN", "30-08-2025", 2 );
+//OI
+if(PLOTOI == "StairCase")
+{
+ColorOI = IIf(OI > Ref(OI,-1), colorRed,IIf(OI < Ref(OI,-1),colorBrightGreen,colorDefault));
+Plot(OI,"",ColorOI ,styleStaircase|styleLeftAxisScale,0,0,0,0,2);
+}
+if(PLOTOI == "Cloud")
+{
+OIMA = MA(OI,8);
+ColorOI = IIf(OI > OIMA,colorDarkRed,colorDarkGreen);
+PlotOHLC( OI, OI, OIMA, OIMA, "", ColorOI, styleNoLabel | styleCloud | styleLeftAxisScale, Null, Null );
+}
 
+//Volume
+PaneHght = 15;//Param( "Volume Pane Height (in %)", 15, 1, 100, 1 );
+PaneHghtMin = LowestVisibleValue( V);
+PaneHghtMax = HighestVisibleValue(V) * 100 / PaneHght;
+gxs= 15;//Param("GRAPH spaceing",15,5,50,5); 
+GraphXSpace = gxs;
+ColorVolume = IIf( C > O, ColorRGB( 0, 255, 0 ), IIf( C <= O, ColorRGB( 255, 0, 0 ), colorLightGrey ) );
+MAV=MA(Volume,50);
+Plot( MAV, "MAV50", colorblue, styleOwnScale | styleNoLabel   ,  PaneHghtMin, PaneHghtMax, 0, 0, 2 );
+Plot( V, "V", ColorVolume ,  styleHistogram | styleOwnScale | styleThick | styleNoLabel , PaneHghtMin, PaneHghtMax, 0, 0, 2 );
 
-EnAlgo = ParamToggle("Enable Place Order","No|Yes",1);
-EnOrdNo = ParamToggle("Need Order No","No|Yes",0);
-LOTS = Param("No. of Lots",1,1,50);
-OUTPATH = ParamStr("Path to Save Response","R:\\");
-USERNUM = Param("User Number",1,1,100,1);//For Multi User Accounts
-HX = Param("Button Horizontal Position",0,0,164);
-HY = Param("Button Vertical Position",0,0,89);
-_SECTION_END();
+//RSI
+if(PLOTRSI)
+{
+RSI0 = RSI(RSIP);
+ColorRSI = IIf(RSI0>50+RSIOZ,colorGreen,IIf(RSI0<50-RSIOZ,colorRed,colorDarkGrey));
+Plot( 98, "", ColorRSI,  styleDots | styleThick | styleNoLine | styleOwnScale | styleNoLabel, 1, 100,0,0,5);
+}
 
+//Chart Code End ===================================
 
 //Prefix for Static Variable
 STGTAG = "O2O";
-SName = STGTAG+Name()+Interval();
+SName = STGTAG+"FLA"+Name()+Interval();
 
 Symbol = Name();
 
@@ -90,7 +138,7 @@ EXPDATE = EXPDATEBN;
 else if (StrFind( Symbol, "NIFTY" ))
 {
 SPNAME = "NIFTY";
-LOTSIZE = 75;
+LOTSIZE = 65;
 EXCHANGE = "NFO";
 EXPDATE = EXPDATEN5;
 }
@@ -109,16 +157,14 @@ EXCHANGE = "NSE";
 EXPDATE = EXPDATEN5;
 }
 
-CEPEFUL = WriteIf(StrFind(Name(),"PE"),"PE","CE");
+CEPEFUL = WriteIf(StrFind(Name(),"PE"+OPTFIX),"PE"+OPTFIX,"CE"+OPTFIX);
 
 STRIKE = StrReplace(StrReplace(Symbol,SPNAME,""),CEPEFUL,"");
 STRIKE = SYMEXTR(DFEED,STRIKE,EXPDATE);
 
-
-CEPE = WriteIf(StrFind(Name(),"PE"),"P","C");
+CEPE = WriteIf(StrFind(Name(),"PE"+OPTFIX),"P","C");
 EXPDATE = DateTimeFormat("%d",EXPDATE)+StrToUpper( DateTimeFormat("%b",EXPDATE))+DateTimeFormat("%y",EXPDATE);
 OPNAME = SPNAME+EXPDATE+CEPE+STRIKE;
-
 
 //Button Code Start----------------------------------------------------
 PX = 10;//round(Status("pxwidth")/164);
@@ -130,7 +176,6 @@ BuyBut = 2;
 SellBut = 3;
 
 ResetBut = 6;
-
 
 GuiButton( "Buy "+CEPE+"E", BuyBut,  PX*1+PX*HX, PY*2+PY*HY, PY*6, PY*3, notifyClicked );
 GuiButton( "Sell "+CEPE+"E", SellBut,  PX*8+PX*HX, PY*2+PY*HY, PY*6, PY*3, notifyClicked );
@@ -176,9 +221,12 @@ StaticVarSet(SName+"UPExitTime",0);
 //Button Code End--------------------------------------
 
 //Order Place Code Start-----------------------------------------------------------
-function FlatTradeOrder(TRANTYPE,TSYM,QTY,PRC,TRGPRC,PRCTYP,PRD,EXCH,UID,TOKEN,REMARKS,OUT)
+
+BASEURL = "https://piconnect.flattrade.in/PiConnectAPI/PlaceOrder";
+
+function FlatTradeOrder(TRANTYPE,TSYM,QTY,PRC,TRGPRC,ORDTYP,PRD,EXCH,UID,TOKEN,REMARKS,OUT)
 {
-ShellExecute("Curl.exe","https://piconnect.flattrade.in/PiConnectTP/PlaceOrder -d \"jData={\\\"ordersource\\\": \\\"API\\\", \\\"uid\\\": \\\""+UID+"\\\", \\\"actid\\\": \\\""+UID+"\\\", \\\"trantype\\\": \\\""+TRANTYPE+"\\\", \\\"prd\\\": \\\""+PRD+"\\\", \\\"exch\\\": \\\""+EXCH+"\\\", \\\"tsym\\\": \\\""+TSYM+"\\\", \\\"qty\\\": \\\""+QTY+"\\\", \\\"dscqty\\\": \\\"0\\\", \\\"prctyp\\\": \\\""+PRCTYP+"\\\", \\\"prc\\\": \\\""+PRC+"\\\", \\\"trgprc\\\": \\\""+TRGPRC+"\\\", \\\"ret\\\": \\\"DAY\\\", \\\"remarks\\\": \\\""+REMARKS+"\\\", \\\"amo\\\": \\\"NO\\\"}\" -d \"jKey="+TOKEN+"\" "+OUT+"","",0);
+ShellExecute("Curl.exe",""+BASEURL+" -d \"jData={\\\"ordersource\\\": \\\"API\\\", \\\"uid\\\": \\\""+UID+"\\\", \\\"actid\\\": \\\""+UID+"\\\", \\\"trantype\\\": \\\""+TRANTYPE+"\\\", \\\"prd\\\": \\\""+PRD+"\\\", \\\"exch\\\": \\\""+EXCH+"\\\", \\\"tsym\\\": \\\""+TSYM+"\\\", \\\"qty\\\": \\\""+QTY+"\\\", \\\"dscqty\\\": \\\"0\\\", \\\"prctyp\\\": \\\""+ORDTYP+"\\\", \\\"prc\\\": \\\""+PRC+"\\\", \\\"trgprc\\\": \\\""+TRGPRC+"\\\", \\\"ret\\\": \\\"DAY\\\", \\\"remarks\\\": \\\""+REMARKS+"\\\", \\\"amo\\\": \\\"NO\\\"}\" -d \"jKey="+TOKEN+"\" "+OUT+"","",0);
 return ;
 }
 
@@ -197,18 +245,21 @@ CHANNELID = ParamStr("Channel ID","");
 
 */
 
-
-
-
-FLAUID1 = StaticVarGetText("FLAUSERID"+USERNUM);
-FLATOK1 = StaticVarGetText("FLATOKEN"+USERNUM);
-OUTRESP1 = WriteIf(EnOrdNo,"-o "+OUTPATH+"\\"+Name()+USERNUM+".txt","");
-SESSIONOK = FLAUID1 != "" AND FLATOK1 != "" ;
+FLAUID1 = StaticVarGetText("FLAUSERID"+"1");//"1" - User Number
+FLATOK1 = StaticVarGetText("FLATOKEN"+"1");//"1" - User Number
+FLAOUTRESP1 = WriteIf(EnOrdNo,"-o "+OUTPATH+"\\"+Name()+"FLA"+"1"+".txt","");//"1" - User Number
+FLASESSIONOK1 = FLAUID1 != "" AND FLATOK1 != "" ;
 
 //Quantity
-QTY = ""+LOTS * LOTSIZE;
+QTY = LOTS * LOTSIZE;
 
 //EXCHANGE = "NFO" ;//NSE NFO CDS MCX BSE BFO
+ORDERTYPE = "LMT";//LMT/MKT/SL-LMT/SL-MKT
+PRODUCT = "M";//C-CNC M-NRML  H-CO  B-BO I-MIS  F-MTF
+
+//Market Order as Limit Order
+BUYOFS = round(C * (1+LMTOFS));
+SELOFS = round(C * (1-LMTOFS));
 
 //Messages
 BuyMessage = "Buy "+OPNAME+" Qty "+QTY+" @ "+CZ;
@@ -218,18 +269,24 @@ SellMessage = "Sell "+OPNAME+" Qty "+QTY+" @ "+CZ;
 
 if (LastValue(Buy)  AND Nz(StaticVarGet(SName+"INUPTRADE")) == 0  AND Nz(StaticVarGet(SName+"UPExitTime")) != TZ)
 {
-if(EnAlgo AND SESSIONOK) FlatTradeOrder("B",OPNAME,QTY,"0","None","MKT","M",EXCHANGE,FLAUID1,FLATOK1,STGTAG,OUTRESP1);
+if(EnAlgo AND FLASESSIONOK1) FlatTradeOrder("B",OPNAME,QTY,BUYOFS,"None",ORDERTYPE,PRODUCT,EXCHANGE,FLAUID1,FLATOK1,STGTAG,FLAOUTRESP1);
 _TRACE(BuyMessage);
 StaticVarSet(SName+"INUPTRADE",1);
+StaticVarSet(SName+CEPE+"UPENTRY",CZ);
 //PopupWindow(BuyMessage, Name(),5,800,50);
 //Telegram(BOTKEY,CHANNELID,BuyMessage); 
 }
 
+PNL = Prec(CZ - StaticVarGet(SName+CEPE+"UPENTRY") ,1);
+MTM = Nz(StaticVarGet(SName+"MTM"));
+
 if (LastValue(Sell)  AND StaticVarGet(SName+"INUPTRADE") )
 {
-if(EnAlgo AND SESSIONOK) FlatTradeOrder("S",OPNAME,QTY,"0","None","MKT","M",EXCHANGE,FLAUID1,FLATOK1,STGTAG,OUTRESP1);
-
+if(EnAlgo AND FLASESSIONOK1) FlatTradeOrder("S",OPNAME,QTY,SELOFS,"None",ORDERTYPE,PRODUCT,EXCHANGE,FLAUID1,FLATOK1,STGTAG,FLAOUTRESP1);
 _TRACE(SellMessage);
+StaticVarSet(SName+"MTM", MTM+PNL);
+_TRACE("PNL "+PNL);
+_TRACE("MTM "+Nz(StaticVarGet(SName+"MTM")));
 StaticVarSet(SName+"INUPTRADE",0);
 StaticVarSet(SName+"UPExitTime", TZ);
 //PopupWindow(SellMessage, Name(),5,800,50);
@@ -238,10 +295,18 @@ StaticVarSet(SName+"UPExitTime", TZ);
 
 
 //Dashboard
-
-BoardColor = IIf(StaticVarGet(SName+"INUPTRADE") AND CEPE == "C", colorPaleGreen,IIf(StaticVarGet(SName+"INUPTRADE") AND CEPE == "P", colorPink,IIf(EnAlgo  AND SESSIONOK,colorYellow,colorWhite)));
+BoardColor = IIf(StaticVarGet(SName+"INUPTRADE") AND CEPE == "C", colorPaleGreen,IIf(StaticVarGet(SName+"INUPTRADE") AND CEPE == "P", colorPink,IIf(EnAlgo  AND FLASESSIONOK1,colorYellow,colorWhite)));
 GfxSetBkColor(BoardColor);
 GfxSelectSolidBrush(BoardColor);
 GfxRoundRect(PX*1, PY*6, PX*28, PY*12,PX,PX);
-GfxTextOut(OPNAME+" "+QTY, PX*2, PY*7);
-if(EnAlgo AND !SESSIONOK)GfxTextOut("Not Logged In", PX*2, PY*9); 
+If(StaticVarGet(SName+"INUPTRADE"))
+{
+GfxTextOut(OPNAME+" "+CZ, PX*2, PY*7);
+GfxTextOut( "Entry "+Prec(StaticVarGet(SName+CEPE+"UPENTRY"),1)+"   PnL "+round(PNL*LotSize)+" MTM "+round(MTM*LotSize) , PX*2, PY*9);
+}
+else if (EnAlgo AND !FLASESSIONOK1)GfxTextOut("Not Logged In", PX*2, PY*9);
+else
+{
+GfxTextOut(OPNAME+" "+CZ, PX*2, PY*7);
+GfxTextOut( "MTM "+round(MTM*LotSize) , PX*2, PY*9);
+}
